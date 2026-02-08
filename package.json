@@ -1,0 +1,19 @@
+{
+  "name": "himorganic-store",
+  "version": "2.0.0",
+  "description": "D2C e-commerce platform for organic products",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "start:mongo": "set DB_TYPE=mongodb && node server.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "cors": "^2.8.6",
+    "uuid": "^13.0.0",
+    "bcryptjs": "^3.0.3",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.9.5"
+  }
+}

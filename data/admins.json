@@ -1,0 +1,18 @@
+[
+  {
+    "id": "c95ffce4-d6c0-4e78-af50-108ff0da80c6",
+    "name": "Admin",
+    "email": "admin@himorganic.com",
+    "password": "$2b$10$BEIgVbRSnzLZzN/TJMnC2.xdFNuQ/pQYW8LMgYYGujQn5OJyvsoBK",
+    "role": "super_admin",
+    "permissions": [
+      "products",
+      "orders",
+      "users",
+      "analytics",
+      "settings"
+    ],
+    "createdAt": "2026-02-08T10:42:53.505Z",
+    "updatedAt": "2026-02-08T10:42:53.506Z"
+  }
+]

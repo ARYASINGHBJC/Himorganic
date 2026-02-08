@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Himorganic</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="/" class="logo">🌿 <span>Himorganic</span></a>
+            <ul class="nav-links">
+                <li><a href="/">Shop</a></li>
+                <li><a href="/admin">Admin</a></li>
+                <li>
+                    <a href="/cart" class="cart-icon">
+                        🛒
+                        <span class="cart-count" id="cart-count">0</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Checkout Section -->
+    <section class="cart-section">
+        <div class="container">
+            <h1 style="margin-bottom: 2rem;">💳 Checkout</h1>
+            
+            <div class="checkout-grid">
+                <!-- Checkout Form -->
+                <div class="checkout-form">
+                    <h3 style="margin-bottom: 1.5rem;">Shipping Information</h3>
+                    <form id="checkout-form" onsubmit="handleCheckout(event)">
+                        <div class="form-group">
+                            <label for="customer-name">Full Name *</label>
+                            <input type="text" id="customer-name" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="customer-email">Email *</label>
+                            <input type="email" id="customer-email" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="customer-phone">Phone *</label>
+                            <input type="tel" id="customer-phone" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="customer-address">Address *</label>
+                            <textarea id="customer-address" class="form-control" rows="3" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="customer-city">City *</label>
+                            <input type="text" id="customer-city" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="customer-pincode">Pincode *</label>
+                            <input type="text" id="customer-pincode" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-pink" style="width: 100%; margin-top: 1rem;">
+                            Place Order
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="order-summary">
+                    <h3 style="margin-bottom: 1.5rem;">Order Summary</h3>
+                    <div id="checkout-items">
+                        <!-- Items will be populated here -->
+                    </div>
+                    <div class="summary-total" id="checkout-total">
+                        <span>Total</span>
+                        <span>₹0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Order Success Modal -->
+    <div class="modal-overlay" id="success-modal">
+        <div class="modal" style="text-align: center;">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">🎉</div>
+            <h2 style="color: var(--green); margin-bottom: 1rem;">Order Placed Successfully!</h2>
+            <p style="color: var(--gray-dark); margin-bottom: 1.5rem;">
+                Thank you for your order. We'll send you a confirmation email shortly.
+            </p>
+            <p style="font-weight: 600; margin-bottom: 2rem;">
+                Order ID: <span id="order-id" style="color: var(--pink);"></span>
+            </p>
+            <a href="/" class="btn btn-primary">Continue Shopping</a>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/js/cart.js"></script>
+    <script src="/js/checkout.js"></script>
+</body>
+</html>
