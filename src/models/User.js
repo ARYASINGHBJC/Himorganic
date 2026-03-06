@@ -4,22 +4,28 @@ const userSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
   },
   email: {
     type: String,
-    required: true,
     unique: true,
+    sparse: true,   // Allows null/undefined for phone-only accounts
     lowercase: true,
-    trim: true
+    trim: true,
   },
   password: {
     type: String,
-    required: true
   },
   phone: {
     type: String,
-    trim: true
+    unique: true,
+    sparse: true,   // Allows null/undefined for email-only accounts
+    trim: true,
+    index: true,
+  },
+  isPhoneVerified: {
+    type: Boolean,
+    default: false,
   },
   addresses: [{
     label: String,
@@ -27,31 +33,30 @@ const userSchema = new mongoose.Schema({
     city: String,
     state: String,
     pincode: String,
-    isDefault: Boolean
+    isDefault: Boolean,
   }],
   wishlist: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product'
+    ref: 'Product',
   }],
   orders: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Order'
+    ref: 'Order',
   }],
   lastLogin: Date,
   isActive: {
     type: Boolean,
-    default: true
-  }
+    default: true,
+  },
 }, {
-  timestamps: true
+  timestamps: true,
 })
 
-// Index for faster queries
-userSchema.index({ email: 1 })
+// Indexes (sparse unique fields already have implicit indexes via the schema)
 userSchema.index({ createdAt: -1 })
 
-// Remove password from JSON output
-userSchema.methods.toJSON = function() {
+// Remove sensitive fields from JSON output
+userSchema.methods.toJSON = function () {
   const user = this.toObject()
   delete user.password
   return user

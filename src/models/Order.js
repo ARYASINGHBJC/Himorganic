@@ -90,8 +90,7 @@ const orderSchema = new mongoose.Schema({
   timestamps: true
 })
 
-// Indexes
-orderSchema.index({ orderNumber: 1 })
+// Indexes (orderNumber unique index is implicit from field definition)
 orderSchema.index({ user: 1 })
 orderSchema.index({ 'customer.email': 1 })
 orderSchema.index({ status: 1 })

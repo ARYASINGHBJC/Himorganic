@@ -13,6 +13,15 @@ export default function ProductDetail() {
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
+  const [selectedWeight, setSelectedWeight] = useState('500 gm')
+
+  const WEIGHT_OPTIONS = [
+    { label: '500 gm', multiplier: 1 },
+    { label: '1 kg',   multiplier: 2 },
+    { label: '5 kg',   multiplier: 8 },
+  ]
+  const currentWeight = WEIGHT_OPTIONS.find(w => w.label === selectedWeight) || WEIGHT_OPTIONS[0]
+  const displayPrice = product ? (product.price * currentWeight.multiplier) : 0
   const [added, setAdded] = useState(false)
   const [isWishlisted, setIsWishlisted] = useState(false)
   const addItem = useCartStore((state) => state.addItem)
@@ -72,7 +81,7 @@ export default function ProductDetail() {
     if (product) {
       addItem(product, quantity)
       setAdded(true)
-      toast.success(`${product.name} (x${quantity}) added to cart!`)
+      toast.success(`${product.name} · ${selectedWeight} (x${quantity}) added to cart!`)
       setTimeout(() => setAdded(false), 2000)
     }
   }
@@ -200,8 +209,8 @@ export default function ProductDetail() {
             <h1 className="text-4xl md:text-5xl font-bold mb-4 text-gray-800">{product.name}</h1>
             
             <div className="flex items-baseline gap-3 mb-6">
-              <span className="text-4xl font-bold text-primary-600">₹{product.price.toFixed(2)}</span>
-              <span className="text-xl text-gray-400 line-through">₹{(product.price * 1.2).toFixed(2)}</span>
+              <span className="text-4xl font-bold text-primary-600">₹{displayPrice.toFixed(2)}</span>
+              <span className="text-xl text-gray-400 line-through">₹{(displayPrice * 1.2).toFixed(2)}</span>
               <span className="px-2 py-1 bg-primary-100 text-primary-700 text-sm font-semibold rounded-lg">20% OFF</span>
             </div>
 
@@ -210,11 +219,31 @@ export default function ProductDetail() {
             </p>
 
             {/* Stock status */}
-            <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-3 mb-6">
               <div className={`w-3 h-3 rounded-full ${product.stock > 0 ? 'bg-primary-500 animate-pulse' : 'bg-orange-500'}`} />
               <span className={product.stock > 0 ? 'text-primary-600 font-medium' : 'text-orange-500 font-medium'}>
-                {product.stock > 0 ? `In Stock (${product.stock} available)` : 'Out of Stock'}
+                {product.stock > 0 ? 'In Stock' : 'Out of Stock'}
               </span>
+            </div>
+
+            {/* Weight selector */}
+            <div className="mb-6">
+              <span className="text-gray-700 font-medium block mb-3">Size:</span>
+              <div className="flex gap-3">
+                {WEIGHT_OPTIONS.map((w) => (
+                  <button
+                    key={w.label}
+                    onClick={() => setSelectedWeight(w.label)}
+                    className={`px-5 py-2.5 rounded-xl border-2 font-semibold text-sm transition-all ${
+                      selectedWeight === w.label
+                        ? 'border-primary-500 bg-primary-50 text-primary-700'
+                        : 'border-gray-200 text-gray-600 hover:border-primary-300'
+                    }`}
+                  >
+                    {w.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Quantity selector */}
@@ -259,7 +288,7 @@ export default function ProductDetail() {
               ) : (
                 <>
                   <ShoppingCart className="w-6 h-6" />
-                  Add to Cart - ₹{(product.price * quantity).toFixed(2)}
+                  Add to Cart - ₹{(displayPrice * quantity).toFixed(2)}
                 </>
               )}
             </motion.button>

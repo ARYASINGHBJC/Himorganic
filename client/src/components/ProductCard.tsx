@@ -1,9 +1,16 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { ShoppingCart, Eye, Leaf } from 'lucide-react'
+import { ShoppingCart, Eye } from 'lucide-react'
 import { Product } from '../types'
 import { useCartStore } from '../store/cartStore'
 import toast from 'react-hot-toast'
+
+const WEIGHT_OPTIONS = [
+  { label: '500 gm', multiplier: 1 },
+  { label: '1 kg',   multiplier: 2 },
+  { label: '5 kg',   multiplier: 8 },
+]
 
 interface ProductCardProps {
   product: Product
@@ -12,12 +19,14 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, index }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem)
+  const [selectedWeight, setSelectedWeight] = useState(WEIGHT_OPTIONS[0])
+  const displayPrice = (product.price * selectedWeight.multiplier).toFixed(2)
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     addItem(product)
-    toast.success(`${product.name} added to cart!`)
+    toast.success(`${product.name} (${selectedWeight.label}) added to cart!`)
   }
 
   return (
@@ -26,9 +35,9 @@ export default function ProductCard({ product, index }: ProductCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, duration: 0.5 }}
       whileHover={{ y: -10 }}
-      className="group perspective-1000"
+      className="group perspective-1000 h-full"
     >
-      <div className="relative bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-primary-100">
+      <div className="relative bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-primary-100 flex flex-col h-full">
         {/* Image */}
         <div className="relative h-64 overflow-hidden bg-gradient-to-br from-primary-50 to-primary-100">
           <motion.img
@@ -42,14 +51,6 @@ export default function ProductCard({ product, index }: ProductCardProps) {
             }}
           />
           
-          {/* Category Badge */}
-          <div className="absolute top-4 left-4">
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/90 backdrop-blur-md text-primary-700 flex items-center gap-1">
-              <Leaf className="w-3 h-3" />
-              {product.category}
-            </span>
-          </div>
-          
           {/* Stock Badge */}
           {product.stock < 10 && (
             <div className="absolute top-4 right-4">
@@ -61,20 +62,32 @@ export default function ProductCard({ product, index }: ProductCardProps) {
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-6 flex flex-col flex-1">
           <h3 className="text-xl font-bold text-primary-800 mb-2 truncate">
             {product.name}
           </h3>
-          <p className="text-primary-600/70 text-sm mb-4 line-clamp-2">
+          <p className="text-primary-600/70 text-sm mb-4 flex-1 line-clamp-2">
             {product.description || 'Premium organic product'}
           </p>
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-2xl font-bold text-primary-600">
-              ₹{product.price.toFixed(2)}
-            </div>
-            <div className="text-sm text-primary-400">
-              In Stock: {product.stock}
-            </div>
+          <div className="text-2xl font-bold text-primary-600 mb-3">
+            ₹{displayPrice}
+          </div>
+
+          {/* Weight selector */}
+          <div className="flex gap-2 mb-4">
+            {WEIGHT_OPTIONS.map((w) => (
+              <button
+                key={w.label}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedWeight(w) }}
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
+                  selectedWeight.label === w.label
+                    ? 'bg-primary-500 text-white border-primary-500'
+                    : 'bg-white text-primary-700 border-primary-200 hover:border-primary-400'
+                }`}
+              >
+                {w.label}
+              </button>
+            ))}
           </div>
           
           {/* Action Buttons */}

@@ -1,23 +1,47 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Plus, 
-  Edit2, 
-  Trash2, 
-  Package, 
-  ShoppingBag, 
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  Package,
+  ShoppingBag,
   DollarSign,
   X,
   Save,
   Loader2,
   LayoutGrid,
   List,
-  Leaf
+  Leaf,
+  Upload,
+  Link as LinkIcon,
+  ImageIcon,
+  AlertCircle,
 } from 'lucide-react'
 import { api } from '../lib/api'
 import { Product, Order } from '../types'
 import LoadingSpinner from '../components/LoadingSpinner'
 import toast from 'react-hot-toast'
+
+// Pre-defined organic product categories for the dropdown
+const PRODUCT_CATEGORIES = [
+  'All Natural',
+  'Ayurvedic',
+  'Cold Pressed Oils',
+  'Dairy & Ghee',
+  'Dry Fruits & Nuts',
+  'Fresh Vegetables',
+  'Fruits & Berries',
+  'Grains & Pulses',
+  'Herbal Teas',
+  'Himalayan Herbs',
+  'Honey & Sweeteners',
+  'Jams & Preserves',
+  'Masalas & Spices',
+  'Pickles & Chutneys',
+  'Superfoods',
+  'Other',
+]
 
 type Tab = 'products' | 'orders'
 
@@ -29,6 +53,10 @@ export default function Admin() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [saving, setSaving] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [imageMode, setImageMode] = useState<'url' | 'upload'>('url')
+  const [imageUploading, setImageUploading] = useState(false)
+  const [imagePreview, setImagePreview] = useState('')
 
   const [formData, setFormData] = useState({
     name: '',
@@ -69,6 +97,7 @@ export default function Admin() {
         stock: product.stock.toString(),
         image: product.image,
       })
+      setImagePreview(product.image)
     } else {
       setEditingProduct(null)
       setFormData({
@@ -79,13 +108,33 @@ export default function Admin() {
         stock: '100',
         image: '',
       })
+      setImagePreview('')
     }
+    setImageMode('url')
     setModalOpen(true)
   }
 
   const closeModal = () => {
     setModalOpen(false)
     setEditingProduct(null)
+    setImagePreview('')
+  }
+
+  const handleImageUpload = async (file: File) => {
+    if (!file) return
+    setImageUploading(true)
+    try {
+      const url = await api.uploadProductImage(file)
+      // url is like /uploads/product-xxx.jpg – make it absolute for preview
+      const fullUrl = url.startsWith('http') ? url : `http://localhost:3000${url}`
+      setFormData((prev) => ({ ...prev, image: url }))
+      setImagePreview(fullUrl)
+      toast.success('Image uploaded!')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setImageUploading(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -470,30 +519,125 @@ export default function Admin() {
                   </div>
                 </div>
 
+                {/* Category Dropdown */}
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-2">
-                    Category
+                    Category *
                   </label>
-                  <input
-                    type="text"
+                  <select
+                    required
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="input-modern"
-                    placeholder="Organic"
-                  />
+                    className="input-modern bg-white"
+                  >
+                    <option value="">Select a category…</option>
+                    {PRODUCT_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
                 </div>
 
+                {/* Image Section */}
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-2">
-                    Image URL
+                    Product Image
                   </label>
-                  <input
-                    type="url"
-                    value={formData.image}
-                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                    className="input-modern"
-                    placeholder="https://example.com/image.jpg"
-                  />
+
+                  {/* Toggle */}
+                  <div className="flex rounded-lg overflow-hidden border border-primary-200 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setImageMode('url')}
+                      className={`flex-1 py-2 text-xs font-semibold flex items-center justify-center gap-1 transition-colors ${
+                        imageMode === 'url' ? 'bg-primary-500 text-white' : 'bg-white text-gray-500 hover:bg-primary-50'
+                      }`}
+                    >
+                      <LinkIcon className="w-3 h-3" /> Paste URL
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImageMode('upload')}
+                      className={`flex-1 py-2 text-xs font-semibold flex items-center justify-center gap-1 transition-colors ${
+                        imageMode === 'upload' ? 'bg-primary-500 text-white' : 'bg-white text-gray-500 hover:bg-primary-50'
+                      }`}
+                    >
+                      <Upload className="w-3 h-3" /> Upload File
+                    </button>
+                  </div>
+
+                  {imageMode === 'url' ? (
+                    <input
+                      type="url"
+                      value={formData.image}
+                      onChange={(e) => {
+                        setFormData({ ...formData, image: e.target.value })
+                        setImagePreview(e.target.value)
+                      }}
+                      className="input-modern"
+                      placeholder="https://images.unsplash.com/…"
+                    />
+                  ) : (
+                    <div
+                      className="border-2 border-dashed border-primary-200 rounded-xl p-6 text-center cursor-pointer hover:border-primary-400 transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) handleImageUpload(file)
+                        }}
+                      />
+                      {imageUploading ? (
+                        <div className="flex items-center justify-center gap-2 text-primary-500">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span className="text-sm">Uploading…</span>
+                        </div>
+                      ) : (
+                        <div className="text-gray-400">
+                          <Upload className="w-8 h-8 mx-auto mb-2 text-primary-300" />
+                          <p className="text-sm">Click to upload image</p>
+                          <p className="text-xs mt-1">PNG, JPG, WebP – max 5 MB</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Image Preview */}
+                  {imagePreview && (
+                    <div className="mt-3 relative">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full h-32 object-cover rounded-xl border border-primary-100"
+                        onError={() => setImagePreview('')}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setFormData({ ...formData, image: '' }); setImagePreview('') }}
+                        className="absolute top-2 right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {!imagePreview && (
+                    <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
+                      <ImageIcon className="w-4 h-4" />
+                      No image selected — a placeholder will be used
+                    </div>
+                  )}
+
+                  {formData.image && !imagePreview && (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
+                      <AlertCircle className="w-4 h-4" />
+                      Image URL invalid or unreachable
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-4 pt-4">

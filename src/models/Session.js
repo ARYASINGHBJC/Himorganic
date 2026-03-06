@@ -30,8 +30,7 @@ const sessionSchema = new mongoose.Schema({
   timestamps: true
 })
 
-// Index for faster lookup
-sessionSchema.index({ refreshToken: 1 })
+// refreshToken unique index is implicit from field definition
 sessionSchema.index({ userId: 1 })
 sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }) // TTL index
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
@@ -9,14 +9,65 @@ import {
   CheckCircle,
   ArrowLeft,
   Loader2,
-  Leaf,
   MapPin,
   Truck,
-  Sparkles
+  Sparkles,
+  ExternalLink,
+  AlertCircle,
+  XCircle,
+  Leaf
 } from 'lucide-react'
 import { useCartStore } from '../store/cartStore'
 import { api } from '../lib/api'
 import toast from 'react-hot-toast'
+
+// ── Set your merchant UPI VPA here ──────────────────────────────
+const MERCHANT_UPI = 'himorganic@upi'   // change to your real UPI ID
+const MERCHANT_NAME = 'Himorganic'
+// ────────────────────────────────────────────────────────────────
+
+const UPI_APPS = [
+  {
+    name: 'Google Pay',
+    id: 'gpay',
+    color: '#4285F4',
+    scheme: (pa: string, am: string, tn: string) =>
+      `tez://upi/pay?pa=${pa}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${am}&cu=INR&tn=${encodeURIComponent(tn)}`,
+    fallback: (pa: string, am: string, tn: string) =>
+      `upi://pay?pa=${pa}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${am}&cu=INR&tn=${encodeURIComponent(tn)}`,
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/512px-Google_Pay_Logo.svg.png',
+  },
+  {
+    name: 'Paytm',
+    id: 'paytm',
+    color: '#002970',
+    scheme: (pa: string, am: string, tn: string) =>
+      `paytmmp://upi/pay?pa=${pa}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${am}&cu=INR&tn=${encodeURIComponent(tn)}`,
+    fallback: (pa: string, am: string, tn: string) =>
+      `upi://pay?pa=${pa}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${am}&cu=INR&tn=${encodeURIComponent(tn)}`,
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/4/42/Paytm_logo.png',
+  },
+  {
+    name: 'PhonePe',
+    id: 'phonepe',
+    color: '#5f259f',
+    scheme: (pa: string, am: string, tn: string) =>
+      `phonepe://pay?pa=${pa}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${am}&cu=INR&tn=${encodeURIComponent(tn)}`,
+    fallback: (pa: string, am: string, tn: string) =>
+      `upi://pay?pa=${pa}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${am}&cu=INR&tn=${encodeURIComponent(tn)}`,
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/PhonePe_Logo.svg/512px-PhonePe_Logo.svg.png',
+  },
+  {
+    name: 'BHIM',
+    id: 'bhim',
+    color: '#004C8F',
+    scheme: (pa: string, am: string, tn: string) =>
+      `upi://pay?pa=${pa}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${am}&cu=INR&tn=${encodeURIComponent(tn)}`,
+    fallback: (pa: string, am: string, tn: string) =>
+      `upi://pay?pa=${pa}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${am}&cu=INR&tn=${encodeURIComponent(tn)}`,
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/BHIM_SVG_Logo.svg/512px-BHIM_SVG_Logo.svg.png',
+  },
+]
 
 type PaymentMethod = 'upi' | 'card'
 
@@ -26,6 +77,16 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('upi')
   const [processing, setProcessing] = useState(false)
   const [step, setStep] = useState(1)
+  const [hydrated, setHydrated] = useState(false)
+
+  // Wait for Zustand persist to rehydrate before checking empty cart
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    if (hydrated && items.length === 0) navigate('/cart')
+  }, [hydrated, items.length])
 
   // Form states
   const [customer, setCustomer] = useState({
@@ -45,37 +106,144 @@ export default function Checkout() {
     cvv: '',
   })
 
+  // Validation state
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [pincodeLoading, setPincodeLoading] = useState(false)
+  const [pincodeCity, setPincodeCity] = useState('')   // city detected from pincode
+
+  const setError = (field: string, msg: string) =>
+    setErrors((prev) => ({ ...prev, [field]: msg }))
+  const clearError = (field: string) =>
+    setErrors((prev) => { const n = { ...prev }; delete n[field]; return n })
+
+  const validateEmail = (v: string) => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) {
+      setError('email', 'Enter a valid email address (e.g. name@gmail.com)')
+      return false
+    }
+    clearError('email')
+    return true
+  }
+
+  const validatePhone = (v: string) => {
+    const digits = v.replace(/\D/g, '')
+    if (digits.length !== 10) {
+      setError('phone', 'Mobile number must be exactly 10 digits')
+      return false
+    }
+    clearError('phone')
+    return true
+  }
+
+  const lookupPincode = async (pin: string) => {
+    if (!/^\d{6}$/.test(pin)) {
+      setError('pincode', 'Pincode must be 6 digits')
+      setPincodeCity('')
+      return
+    }
+    clearError('pincode')
+    clearError('city')
+    setPincodeLoading(true)
+    try {
+      const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`)
+      const data = await res.json()
+      if (data[0]?.Status === 'Success' && data[0]?.PostOffice?.length) {
+        const po = data[0].PostOffice[0]
+        const detected = po.District || po.Block || po.Name
+        setPincodeCity(detected)
+        clearError('pincode')
+        // auto-fill city if empty
+        setCustomer((prev) => ({ ...prev, city: prev.city || detected }))
+        // validate city if already entered
+        if (customer.city && customer.city.toLowerCase() !== detected.toLowerCase()) {
+          setError('city', `Pincode ${pin} belongs to ${detected}, not "${customer.city}"`)
+        } else {
+          clearError('city')
+        }
+      } else {
+        setError('pincode', 'Invalid pincode — not found in India Post database')
+        setPincodeCity('')
+      }
+    } catch {
+      setError('pincode', 'Could not verify pincode. Check your connection.')
+    } finally {
+      setPincodeLoading(false)
+    }
+  }
+
+  const validateCity = (cityVal: string) => {
+    if (!pincodeCity) return true   // pincode not looked up yet, skip
+    if (cityVal.toLowerCase() !== pincodeCity.toLowerCase()) {
+      setError('city', `City doesn't match pincode — expected "${pincodeCity}"`)
+      return false
+    }
+    clearError('city')
+    return true
+  }
+
+  const inputClass = (field: string) =>
+    `w-full px-4 py-3 bg-white border-2 rounded-xl focus:ring-4 transition-all outline-none ${
+      errors[field]
+        ? 'border-red-400 focus:border-red-500 focus:ring-red-100'
+        : 'border-gray-100 focus:border-primary-500 focus:ring-primary-100'
+    }`
+
   const subtotal = getTotal()
   const shipping = subtotal > 500 ? 0 : 50
   const total = subtotal + shipping
 
-  if (items.length === 0) {
-    navigate('/cart')
-    return null
+  const buildUPILink = (app: typeof UPI_APPS[0]) => {
+    const tn = `Himorganic Order`
+    return app.scheme(MERCHANT_UPI, total.toFixed(2), tn)
+  }
+
+  const handleUPIAppPay = (app: typeof UPI_APPS[0]) => {
+    if (!customer.name) {
+      toast.error('Please complete shipping details first')
+      return
+    }
+    const link = buildUPILink(app)
+    // Try app deep link; on desktop it may fail — that's expected
+    window.location.href = link
+    // After a short delay, assume payment was initiated and confirm order
+    setTimeout(async () => {
+      try {
+        setProcessing(true)
+        const order = await api.createOrder({
+          items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+          customer,
+          paymentMethod: 'upi',
+        })
+        clearCart()
+        navigate('/payment-success', { state: { orderId: order.id } })
+      } catch {
+        toast.error('Could not confirm order. Please contact support.')
+      } finally {
+        setProcessing(false)
+      }
+    }, 3000)
   }
 
   const handleCustomerSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setStep(2)
+    const emailOk = validateEmail(customer.email)
+    const phoneOk = validatePhone(customer.phone)
+    const cityOk  = validateCity(customer.city)
+    const pinOk   = !/^\d{6}$/.test(customer.pincode)
+      ? (setError('pincode', 'Pincode must be 6 digits'), false)
+      : true
+    if (emailOk && phoneOk && cityOk && pinOk) setStep(2)
   }
 
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault()
     setProcessing(true)
-
-    // Simulate payment processing
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
     try {
       const order = await api.createOrder({
-        items: items.map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-        })),
+        items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
         customer,
         paymentMethod,
       })
-
       clearCart()
       navigate('/payment-success', { state: { orderId: order.id } })
     } catch (error) {
@@ -84,6 +252,8 @@ export default function Checkout() {
       setProcessing(false)
     }
   }
+
+  if (!hydrated || items.length === 0) return null
 
   const formatCardNumber = (value: string) => {
     return value
@@ -209,82 +379,134 @@ export default function Checkout() {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="group">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Full Name *
-                      </label>
+                    {/* Full Name */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
                       <input
                         type="text"
                         required
                         value={customer.name}
                         onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
-                        className="w-full px-4 py-3 bg-white border-2 border-gray-100 rounded-xl focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all outline-none"
-                        placeholder="John Doe"
+                        className={inputClass('name')}
+                        placeholder="Arya Singh"
                       />
                     </div>
-                    <div className="group">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Email *
-                      </label>
+
+                    {/* Email */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
                       <input
-                        type="email"
+                        type="text"
                         required
                         value={customer.email}
-                        onChange={(e) => setCustomer({ ...customer, email: e.target.value })}
-                        className="w-full px-4 py-3 bg-white border-2 border-gray-100 rounded-xl focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all outline-none"
-                        placeholder="john@example.com"
+                        onChange={(e) => { setCustomer({ ...customer, email: e.target.value }); clearError('email') }}
+                        onBlur={(e) => validateEmail(e.target.value)}
+                        className={inputClass('email')}
+                        placeholder="name@gmail.com"
                       />
+                      {errors.email && (
+                        <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1">
+                          <XCircle className="w-3.5 h-3.5 shrink-0" />{errors.email}
+                        </p>
+                      )}
                     </div>
-                    <div className="group">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Phone *
-                      </label>
+
+                    {/* Phone */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone *</label>
                       <input
                         type="tel"
                         required
                         value={customer.phone}
-                        onChange={(e) => setCustomer({ ...customer, phone: e.target.value })}
-                        className="w-full px-4 py-3 bg-white border-2 border-gray-100 rounded-xl focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all outline-none"
-                        placeholder="+91 9876543210"
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '').slice(0, 10)
+                          setCustomer({ ...customer, phone: digits })
+                          if (digits.length === 10) clearError('phone')
+                        }}
+                        onBlur={(e) => validatePhone(e.target.value)}
+                        className={inputClass('phone')}
+                        placeholder="9876543210"
+                        maxLength={10}
                       />
+                      {errors.phone && (
+                        <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1">
+                          <XCircle className="w-3.5 h-3.5 shrink-0" />{errors.phone}
+                        </p>
+                      )}
                     </div>
-                    <div className="group">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        City *
-                      </label>
+
+                    {/* City */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">City *</label>
                       <input
                         type="text"
                         required
                         value={customer.city}
-                        onChange={(e) => setCustomer({ ...customer, city: e.target.value })}
-                        className="w-full px-4 py-3 bg-white border-2 border-gray-100 rounded-xl focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all outline-none"
-                        placeholder="Mumbai"
+                        onChange={(e) => {
+                          setCustomer({ ...customer, city: e.target.value })
+                          clearError('city')
+                        }}
+                        onBlur={(e) => validateCity(e.target.value)}
+                        className={inputClass('city')}
+                        placeholder={pincodeCity || 'Mumbai'}
                       />
+                      {pincodeCity && !errors.city && (
+                        <p className="mt-1.5 text-xs text-primary-600 flex items-center gap-1">
+                          <CheckCircle className="w-3.5 h-3.5 shrink-0" />Detected: {pincodeCity}
+                        </p>
+                      )}
+                      {errors.city && (
+                        <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1">
+                          <XCircle className="w-3.5 h-3.5 shrink-0" />{errors.city}
+                        </p>
+                      )}
                     </div>
-                    <div className="md:col-span-2 group">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Address *
-                      </label>
+
+                    {/* Address */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Address *</label>
                       <textarea
                         required
                         value={customer.address}
                         onChange={(e) => setCustomer({ ...customer, address: e.target.value })}
-                        className="w-full px-4 py-3 bg-white border-2 border-gray-100 rounded-xl focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all outline-none min-h-[100px] resize-none"
+                        className={`${inputClass('address')} min-h-[100px] resize-none`}
                         placeholder="Street address, apartment, etc."
                       />
                     </div>
-                    <div className="group">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Pincode *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={customer.pincode}
-                        onChange={(e) => setCustomer({ ...customer, pincode: e.target.value })}
-                        className="w-full px-4 py-3 bg-white border-2 border-gray-100 rounded-xl focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all outline-none"
-                        placeholder="400001"
-                      />
+
+                    {/* Pincode */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Pincode *</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          required
+                          value={customer.pincode}
+                          onChange={(e) => {
+                            const v = e.target.value.replace(/\D/g, '').slice(0, 6)
+                            setCustomer({ ...customer, pincode: v })
+                            if (v.length < 6) { clearError('pincode'); setPincodeCity('') }
+                          }}
+                          onBlur={(e) => { if (e.target.value.length === 6) lookupPincode(e.target.value) }}
+                          className={inputClass('pincode')}
+                          placeholder="400001"
+                          maxLength={6}
+                        />
+                        {pincodeLoading && (
+                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-500 animate-spin" />
+                        )}
+                        {!pincodeLoading && pincodeCity && !errors.pincode && (
+                          <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
+                        )}
+                        {!pincodeLoading && errors.pincode && (
+                          <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-400" />
+                        )}
+                      </div>
+                      {errors.pincode && (
+                        <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1">
+                          <XCircle className="w-3.5 h-3.5 shrink-0" />{errors.pincode}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -367,20 +589,64 @@ export default function Checkout() {
                           exit={{ opacity: 0, height: 0 }}
                           className="bg-gray-50 rounded-2xl p-6"
                         >
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            UPI ID *
-                          </label>
-                          <input
-                            type="text"
-                            required
-                            value={upiId}
-                            onChange={(e) => setUpiId(e.target.value)}
-                            className="w-full px-4 py-3 bg-white border-2 border-gray-100 rounded-xl focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all outline-none"
-                            placeholder="yourname@upi"
-                          />
-                          <p className="mt-3 text-sm text-gray-500 flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-primary-500" />
-                            Enter your UPI ID (e.g., name@paytm, name@ybl)
+                          <p className="text-sm font-medium text-gray-700 mb-4">Pay instantly with your UPI app</p>
+
+                          {/* UPI App Buttons */}
+                          <div className="grid grid-cols-2 gap-3 mb-5">
+                            {UPI_APPS.map((app) => (
+                              <motion.button
+                                key={app.id}
+                                type="button"
+                                whileHover={{ scale: 1.03, y: -2 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => handleUPIAppPay(app)}
+                                disabled={processing}
+                                className="flex items-center gap-3 p-4 bg-white rounded-xl border-2 border-gray-100 hover:border-primary-300 hover:shadow-md transition-all disabled:opacity-50"
+                              >
+                                <img
+                                  src={app.logo}
+                                  alt={app.name}
+                                  className="w-8 h-8 object-contain"
+                                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                                />
+                                <span className="font-semibold text-gray-700 text-sm">{app.name}</span>
+                                <ExternalLink className="w-3 h-3 text-gray-400 ml-auto" />
+                              </motion.button>
+                            ))}
+                          </div>
+
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="flex-1 h-px bg-gray-200" />
+                            <span className="text-xs text-gray-400 font-medium">or enter UPI ID manually</span>
+                            <div className="flex-1 h-px bg-gray-200" />
+                          </div>
+
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={upiId}
+                              onChange={(e) => setUpiId(e.target.value)}
+                              className="flex-1 px-4 py-3 bg-white border-2 border-gray-100 rounded-xl focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all outline-none text-sm"
+                              placeholder="yourname@paytm / @ybl / @okicici"
+                            />
+                            <motion.button
+                              type="button"
+                              whileHover={{ scale: 1.03 }}
+                              whileTap={{ scale: 0.97 }}
+                              disabled={!upiId || processing}
+                              onClick={() => {
+                                if (!upiId) return
+                                const link = `upi://pay?pa=${MERCHANT_UPI}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${total.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Himorganic Order')}`
+                                window.location.href = link
+                              }}
+                              className="px-4 py-3 bg-primary-500 text-white rounded-xl font-semibold text-sm hover:bg-primary-600 transition-colors disabled:opacity-40"
+                            >
+                              Pay
+                            </motion.button>
+                          </div>
+                          <p className="mt-3 text-xs text-gray-400 flex items-center gap-1.5">
+                            <CheckCircle className="w-3.5 h-3.5 text-primary-400 shrink-0" />
+                            Opens your UPI app directly. Works on mobile with GPay, Paytm, PhonePe installed.
                           </p>
                         </motion.div>
                       ) : (

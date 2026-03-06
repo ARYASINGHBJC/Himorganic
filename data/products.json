@@ -1,1 +1,30 @@
-[]
+[
+  {
+    "id": "ff42fbe5-6e38-4e9e-8d0c-65bd6c4d4cf4",
+    "name": "Wild Himalayan Honey",
+    "description": "Pure raw honey from Himalayan forests",
+    "price": 599,
+    "image": "/uploads/honey.png",
+    "category": "Honey",
+    "stock": 46,
+    "rating": 0,
+    "reviewCount": 0,
+    "createdBy": "c95ffce4-d6c0-4e78-af50-108ff0da80c6",
+    "createdAt": "2026-03-06T17:36:09.289Z",
+    "updatedAt": "2026-03-06T19:16:27.868Z"
+  },
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Pure Himalayan Ghee",
+    "description": "Traditional grass-fed cow ghee from Himalayan farms, rich in Omega-3 and vitamins",
+    "price": 899,
+    "image": "/uploads/ghee.png",
+    "category": "Ghee",
+    "stock": 27,
+    "rating": 0,
+    "reviewCount": 0,
+    "createdBy": "c95ffce4-d6c0-4e78-af50-108ff0da80c6",
+    "createdAt": "2026-03-06T18:00:00.000Z",
+    "updatedAt": "2026-03-06T19:16:27.866Z"
+  }
+]

@@ -15,8 +15,21 @@
 
 const express = require('express')
 const cors = require('cors')
+const helmet = require('helmet')
 const path = require('path')
 const fs = require('fs')
+
+// ---------------------------------------------------------------------------
+// Startup Env Guard – fail fast on missing critical config
+// ---------------------------------------------------------------------------
+if (process.env.NODE_ENV === 'production') {
+  const required = ['JWT_SECRET', 'MONGODB_URI']
+  const missing = required.filter((k) => !process.env[k])
+  if (missing.length) {
+    console.error(`[FATAL] Missing required environment variables: ${missing.join(', ')}`)
+    process.exit(1)
+  }
+}
 
 // Import configuration
 const config = require('./src/config')
@@ -30,7 +43,7 @@ const {
 } = require('./src/routes')
 
 // Import middleware
-const { requestLogger, errorHandler } = require('./src/middleware/auth')
+const { requestLogger, errorHandler, verifyToken, requireAdmin } = require('./src/middleware/auth')
 
 // Initialize Express app
 const app = express()
@@ -39,12 +52,41 @@ const app = express()
 // MIDDLEWARE SETUP
 // ===========================================
 
-// Enable CORS
+// Security headers (Helmet must come first)
+app.use(
+  helmet({
+    // Allow inline styles/scripts needed by the React SPA
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+        connectSrc: ["'self'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false, // Required for Three.js
+  })
+)
+
+// Enable CORS – restrict origins explicitly
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  ...(process.env.CLIENT_ORIGIN ? [process.env.CLIENT_ORIGIN] : []),
+]
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+  origin: (origin, callback) => {
+    // Allow same-origin requests and configured origins
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true)
+    callback(new Error(`CORS: origin '${origin}' not permitted`))
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }))
 
 // Parse JSON bodies
@@ -84,8 +126,44 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 }))
 
 // NOTE: Legacy public folder disabled - use React frontend instead
-// To use old UI, uncomment the line below:
-// app.use(express.static(path.join(__dirname, 'public')))
+
+// ===========================================
+// FILE UPLOAD (Product Images)
+// ===========================================
+
+const multer = require('multer')
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, path.join(__dirname, 'uploads')),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || '.jpg'
+    cb(null, `product-${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`)
+  },
+})
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB max
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) return cb(null, true)
+    cb(new Error('Only image files are allowed'))
+  },
+})
+
+// POST /api/upload/product-image  – admin-only image upload
+app.post(
+  '/api/upload/product-image',
+  verifyToken,
+  requireAdmin,
+  upload.single('image'),
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' })
+    }
+    const imageUrl = `/uploads/${req.file.filename}`
+    res.json({ url: imageUrl, filename: req.file.filename })
+  }
+)
 
 // ===========================================
 // API ROUTES
@@ -105,17 +183,6 @@ app.use('/api/auth', authRoutes)
 app.use('/api/products', productRoutes)
 app.use('/api/orders', orderRoutes)
 app.use('/api/analytics', analyticsRoutes)
-
-// ===========================================
-// LEGACY ROUTE COMPATIBILITY
-// ===========================================
-// These maintain backwards compatibility with the old API
-
-// Legacy product routes
-app.get('/api/products', (req, res, next) => {
-  req.url = '/'
-  productRoutes(req, res, next)
-})
 
 // ===========================================
 // CLIENT APP SERVING (SPA)

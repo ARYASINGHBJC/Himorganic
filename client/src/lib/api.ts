@@ -13,10 +13,25 @@ export interface AuthResponse {
   user: {
     id: string
     name: string
-    email: string
-    role: string
+    email?: string
+    phone?: string
+    role?: string
+    isAdmin?: boolean
+    isPhoneVerified?: boolean
   }
+  /** Primary token field used throughout the app */
   token: string
+  /** Alias kept for potential legacy consumers */
+  accessToken?: string
+  refreshToken?: string
+  isNewUser?: boolean
+}
+
+export interface OTPSendResponse {
+  message: string
+  phone: string
+  /** Only present in development */
+  devOtp?: string
 }
 
 export interface AdminStats {
@@ -31,7 +46,7 @@ export interface AdminStats {
 
 export const api = {
   // ============== AUTH ==============
-  
+
   // User Registration
   async register(data: { name: string; email: string; password: string; phone?: string }): Promise<AuthResponse> {
     const res = await fetch(`${API_URL}/auth/register`, {
@@ -44,7 +59,7 @@ export const api = {
     return result
   },
 
-  // User Login
+  // User Login (email + password)
   async login(email: string, password: string): Promise<AuthResponse> {
     const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
@@ -68,19 +83,46 @@ export const api = {
     return result
   },
 
+  // Phone OTP – step 1: send OTP
+  async sendOTP(phone: string): Promise<OTPSendResponse> {
+    const res = await fetch(`${API_URL}/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone }),
+    })
+    const result = await res.json()
+    if (!res.ok) throw new Error(result.error || 'Failed to send OTP')
+    return result
+  },
+
+  // Phone OTP – step 2: verify OTP (registers if new user)
+  async verifyOTP(phone: string, otp: string, name?: string): Promise<AuthResponse> {
+    const res = await fetch(`${API_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, otp, name }),
+    })
+    const result = await res.json()
+    if (!res.ok) throw new Error(result.error || 'OTP verification failed')
+    return result
+  },
+
   // Get current user profile
-  async getProfile(): Promise<any> {
+  async getProfile(): Promise<AuthResponse['user']> {
     const res = await fetch(`${API_URL}/auth/profile`, {
       headers: { ...getAuthHeader() },
     })
     if (!res.ok) throw new Error('Failed to fetch profile')
-    return res.json()
+    const data = await res.json()
+    return data.user ?? data
   },
 
   // ============== PRODUCTS ==============
-  
-  async getProducts(): Promise<Product[]> {
-    const res = await fetch(`${API_URL}/products`)
+
+  async getProducts(params?: { category?: string; search?: string; sort?: string }): Promise<Product[]> {
+    const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : ''
+    const res = await fetch(`${API_URL}/products${qs}`)
+    if (!res.ok) throw new Error('Failed to fetch products')
     return res.json()
   },
 
@@ -93,9 +135,9 @@ export const api = {
   async createProduct(product: Omit<Product, 'id' | 'createdAt'>): Promise<Product> {
     const res = await fetch(`${API_URL}/products`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        ...getAuthHeader()
+        ...getAuthHeader(),
       },
       body: JSON.stringify(product),
     })
@@ -107,9 +149,9 @@ export const api = {
   async updateProduct(id: string, product: Partial<Product>): Promise<Product> {
     const res = await fetch(`${API_URL}/products/${id}`, {
       method: 'PUT',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        ...getAuthHeader()
+        ...getAuthHeader(),
       },
       body: JSON.stringify(product),
     })
@@ -129,8 +171,22 @@ export const api = {
     }
   },
 
+  /** Upload a product image file and receive its URL */
+  async uploadProductImage(file: File): Promise<string> {
+    const formData = new FormData()
+    formData.append('image', file)
+    const res = await fetch(`${API_URL}/upload/product-image`, {
+      method: 'POST',
+      headers: { ...getAuthHeader() },
+      body: formData,
+    })
+    const result = await res.json()
+    if (!res.ok) throw new Error(result.error || 'Image upload failed')
+    return result.url as string
+  },
+
   // ============== ORDERS ==============
-  
+
   async getOrders(): Promise<Order[]> {
     const res = await fetch(`${API_URL}/orders`, {
       headers: { ...getAuthHeader() },
@@ -154,9 +210,9 @@ export const api = {
   }): Promise<Order> {
     const res = await fetch(`${API_URL}/orders`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        ...getAuthHeader()
+        ...getAuthHeader(),
       },
       body: JSON.stringify(data),
     })
@@ -168,9 +224,9 @@ export const api = {
   async updateOrderStatus(id: string, status: string): Promise<Order> {
     const res = await fetch(`${API_URL}/orders/${id}`, {
       method: 'PATCH',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        ...getAuthHeader()
+        ...getAuthHeader(),
       },
       body: JSON.stringify({ status }),
     })
@@ -180,7 +236,7 @@ export const api = {
   },
 
   // ============== ADMIN STATS ==============
-  
+
   async getAdminStats(): Promise<AdminStats> {
     const res = await fetch(`${API_URL}/admin/stats`, {
       headers: { ...getAuthHeader() },

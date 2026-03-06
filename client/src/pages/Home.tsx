@@ -246,7 +246,7 @@ export default function Home() {
             >
               <div className="relative rounded-3xl overflow-hidden shadow-2xl">
                 <img
-                  src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=600"
+                  src="/uploads/ghee.png"
                   alt="Organic Farm"
                   className="w-full h-96 object-cover"
                 />

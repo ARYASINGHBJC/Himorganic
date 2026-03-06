@@ -35,8 +35,7 @@ const adminSchema = new mongoose.Schema({
   timestamps: true
 })
 
-// Index for faster queries
-adminSchema.index({ email: 1 })
+// email unique index is implicit from field definition
 
 // Remove password from JSON output
 adminSchema.methods.toJSON = function() {
