@@ -1,18 +1,19 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import Navbar from './components/Navbar'
-import Home from './pages/Home'
-import ProductDetail from './pages/ProductDetail'
-import Cart from './pages/Cart'
-import Checkout from './pages/Checkout'
-import Admin from './pages/Admin'
-import PaymentSuccess from './pages/PaymentSuccess'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import AdminLogin from './pages/AdminLogin'
-import Wishlist from './pages/Wishlist'
 import { useAuthStore } from './store/authStore'
+
+const Home = lazy(() => import('./pages/Home'))
+const ProductDetail = lazy(() => import('./pages/ProductDetail'))
+const Cart = lazy(() => import('./pages/Cart'))
+const Checkout = lazy(() => import('./pages/Checkout'))
+const Admin = lazy(() => import('./pages/Admin'))
+const PaymentSuccess = lazy(() => import('./pages/PaymentSuccess'))
+const Login = lazy(() => import('./pages/Login'))
+const Register = lazy(() => import('./pages/Register'))
+const AdminLogin = lazy(() => import('./pages/AdminLogin'))
+const Wishlist = lazy(() => import('./pages/Wishlist'))
 
 function RouteLoader() {
   return (
@@ -75,26 +76,28 @@ function App() {
         }}
       />
       <Navbar />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/product/:id" element={<ProductDetail />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/wishlist" element={
-          <ProtectedRoute>
-            <Wishlist />
-          </ProtectedRoute>
-        } />
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin" element={
-          <ProtectedRoute requireAdmin>
-            <Admin />
-          </ProtectedRoute>
-        } />
-        <Route path="/payment-success" element={<PaymentSuccess />} />
-      </Routes>
+      <Suspense fallback={<RouteLoader />}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/wishlist" element={
+            <ProtectedRoute>
+              <Wishlist />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={
+            <ProtectedRoute requireAdmin>
+              <Admin />
+            </ProtectedRoute>
+          } />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
+        </Routes>
+      </Suspense>
     </div>
   )
 }
