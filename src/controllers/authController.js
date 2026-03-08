@@ -1,5 +1,7 @@
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
+const https = require('https')
+const twilio = require('twilio')
 const { v4: uuidv4 } = require('uuid')
 const config = require('../config')
 const db = require('../utils/dbAdapter')
@@ -19,16 +21,72 @@ const normalisePhone = (raw) => {
   return `+${digits}` // best-effort
 }
 
-/** Deliver an OTP.  In production wire in Twilio / MSG91 here. */
+/** Deliver an OTP via the configured SMS provider. */
 const dispatchOTP = async (phone, otp) => {
-  if (process.env.NODE_ENV === 'production') {
-    // TODO: Replace with real SMS provider (Twilio / MSG91 / etc.)
-    // await twilioClient.messages.create({ to: phone, from: TWILIO_FROM, body: `Your HimOrganic OTP: ${otp}` })
-    console.warn(`[OTP] Production OTP for ${phone}: ${otp}  (wire up SMS provider)`)
-  } else {
+  const message = `Your HimOrganic OTP is ${otp}. Valid for 10 minutes. Do not share it with anyone.`
+
+  if (process.env.NODE_ENV !== 'production') {
     // Development: print to console – visible in server terminal
     console.log(`\n📱 [DEV OTP] Phone: ${phone}  →  OTP: ${otp}  (valid 10 min)\n`)
+    return
   }
+
+  const provider = config.sms.provider
+
+  if (provider === 'twilio') {
+    const { accountSid, authToken, fromNumber } = config.sms.twilio
+    if (!accountSid || !authToken || !fromNumber) {
+      throw new Error('Twilio credentials are not fully configured (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER)')
+    }
+    const client = twilio(accountSid, authToken)
+    await client.messages.create({ to: phone, from: fromNumber, body: message })
+    return
+  }
+
+  if (provider === 'msg91') {
+    const { apiKey, templateId, senderId } = config.sms.msg91
+    if (!apiKey || !templateId) {
+      throw new Error('MSG91 credentials are not fully configured (MSG91_API_KEY, MSG91_TEMPLATE_ID)')
+    }
+    const payload = JSON.stringify({
+      template_id: templateId,
+      short_url: '0',
+      mobile: phone.replace(/[^\d]/g, ''),  // MSG91 expects digits only
+      authkey: apiKey,
+      sender: senderId,
+      otp,
+    })
+    await new Promise((resolve, reject) => {
+      const req = https.request(
+        {
+          hostname: 'control.msg91.com',
+          path: '/api/v5/otp',
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+        },
+        (res) => {
+          let body = ''
+          res.on('data', (chunk) => { body += chunk })
+          res.on('end', () => {
+            try {
+              const parsed = JSON.parse(body)
+              if (parsed.type === 'success') return resolve(parsed)
+              reject(new Error(`MSG91 error: ${parsed.message || body}`))
+            } catch {
+              reject(new Error(`MSG91 unexpected response: ${body}`))
+            }
+          })
+        }
+      )
+      req.on('error', reject)
+      req.write(payload)
+      req.end()
+    })
+    return
+  }
+
+  // No provider configured – log a warning so it's easy to diagnose
+  console.warn(`[OTP] SMS_PROVIDER not configured. OTP for ${phone}: ${otp}`)
 }
 
 /**

@@ -35,7 +35,26 @@ const config = {
   rateLimit: {
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100 // requests per window
-  }
+  },
+
+  // SMS / OTP provider ('twilio' | 'msg91' | '' for disabled)
+  sms: {
+    provider: process.env.SMS_PROVIDER || '',
+
+    // Twilio
+    twilio: {
+      accountSid: process.env.TWILIO_ACCOUNT_SID || '',
+      authToken: process.env.TWILIO_AUTH_TOKEN || '',
+      fromNumber: process.env.TWILIO_FROM_NUMBER || '',
+    },
+
+    // MSG91
+    msg91: {
+      apiKey: process.env.MSG91_API_KEY || '',
+      templateId: process.env.MSG91_TEMPLATE_ID || '',
+      senderId: process.env.MSG91_SENDER_ID || 'HIMORG',
+    },
+  },
 }
 
 module.exports = config

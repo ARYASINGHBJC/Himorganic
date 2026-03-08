@@ -29,6 +29,12 @@ if (process.env.NODE_ENV === 'production') {
     console.error(`[FATAL] Missing required environment variables: ${missing.join(', ')}`)
     process.exit(1)
   }
+
+  // Warn if SMS is not configured (OTP login will fall back to console-only logging)
+  if (!process.env.SMS_PROVIDER) {
+    console.warn('[WARN] SMS_PROVIDER is not set. Phone/OTP login will not send real SMS messages.')
+    console.warn('[WARN] Set SMS_PROVIDER=twilio or SMS_PROVIDER=msg91 and provide credentials.')
+  }
 }
 
 // Import configuration
