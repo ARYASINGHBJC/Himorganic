@@ -6,10 +6,48 @@ import { ProductSkeleton } from '../components/LoadingSpinner'
 import HeroScene from '../components/HeroScene'
 import { api } from '../lib/api'
 import { Product } from '../types'
+import toast from 'react-hot-toast'
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Contact form state
+  const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' })
+  const [contactSending, setContactSending] = useState(false)
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!contactForm.name || !contactForm.email || !contactForm.message) {
+      toast.error('Please fill in all fields')
+      return
+    }
+    setContactSending(true)
+    try {
+      const res = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          access_key: import.meta.env.VITE_WEB3FORMS_KEY,
+          name: contactForm.name,
+          email: contactForm.email,
+          message: contactForm.message,
+          subject: `Himorganic Contact: Message from ${contactForm.name}`,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success('Message sent! We\'ll get back to you soon.')
+        setContactForm({ name: '', email: '', message: '' })
+      } else {
+        throw new Error(data.message)
+      }
+    } catch {
+      toast.error('Failed to send message. Please try again.')
+    } finally {
+      setContactSending(false)
+    }
+  }
 
   useEffect(() => {
     loadProducts()
@@ -354,12 +392,14 @@ export default function Home() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
-              <form className="bg-gradient-to-br from-primary-50 to-white p-8 rounded-2xl border border-primary-100 shadow-lg">
+              <form onSubmit={handleContactSubmit} className="bg-gradient-to-br from-primary-50 to-white p-8 rounded-2xl border border-primary-100 shadow-lg">
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-primary-700 mb-2">Your Name</label>
                     <input
                       type="text"
+                      value={contactForm.name}
+                      onChange={e => setContactForm(f => ({ ...f, name: e.target.value }))}
                       className="w-full px-4 py-3 rounded-xl border border-primary-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all bg-white"
                       placeholder="John Doe"
                     />
@@ -368,6 +408,8 @@ export default function Home() {
                     <label className="block text-sm font-medium text-primary-700 mb-2">Email Address</label>
                     <input
                       type="email"
+                      value={contactForm.email}
+                      onChange={e => setContactForm(f => ({ ...f, email: e.target.value }))}
                       className="w-full px-4 py-3 rounded-xl border border-primary-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all bg-white"
                       placeholder="john@example.com"
                     />
@@ -376,6 +418,8 @@ export default function Home() {
                     <label className="block text-sm font-medium text-primary-700 mb-2">Message</label>
                     <textarea
                       rows={4}
+                      value={contactForm.message}
+                      onChange={e => setContactForm(f => ({ ...f, message: e.target.value }))}
                       className="w-full px-4 py-3 rounded-xl border border-primary-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all bg-white resize-none"
                       placeholder="How can we help you?"
                     />
@@ -384,9 +428,10 @@ export default function Home() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="w-full btn-primary py-4 text-lg"
+                    disabled={contactSending}
+                    className="w-full btn-primary py-4 text-lg disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    Send Message
+                    {contactSending ? 'Sending...' : 'Send Message'}
                   </motion.button>
                 </div>
               </form>
