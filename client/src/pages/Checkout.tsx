@@ -22,8 +22,8 @@ import { api } from '../lib/api'
 import toast from 'react-hot-toast'
 
 // ── Set your merchant UPI VPA here ──────────────────────────────
-const MERCHANT_UPI = 'himorganic@upi'   // change to your real UPI ID
-const MERCHANT_NAME = 'Himorganic'
+const MERCHANT_UPI = import.meta.env.VITE_MERCHANT_UPI || 'himorganic@upi'
+const MERCHANT_NAME = import.meta.env.VITE_MERCHANT_NAME || 'Himorganic'
 // ────────────────────────────────────────────────────────────────
 
 const UPI_APPS = [
