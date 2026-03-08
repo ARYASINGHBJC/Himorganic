@@ -46,6 +46,13 @@ export interface AdminStats {
   lowStockProducts: number
 }
 
+interface OrderListResponse {
+  orders: Order[]
+  total: number
+  limit: number
+  offset: number
+}
+
 export const api = {
   // ============== AUTH ==============
 
@@ -193,16 +200,18 @@ export const api = {
     const res = await fetch(`${API_URL}/orders`, {
       headers: { ...getAuthHeader() },
     })
-    if (!res.ok) throw new Error('Failed to fetch orders')
-    return res.json()
+    const result = await res.json()
+    if (!res.ok) throw new Error(result.error || 'Failed to fetch orders')
+    return Array.isArray(result) ? result : (result as OrderListResponse).orders || []
   },
 
   async getMyOrders(): Promise<Order[]> {
-    const res = await fetch(`${API_URL}/orders/my`, {
+    const res = await fetch(`${API_URL}/orders/my-orders`, {
       headers: { ...getAuthHeader() },
     })
-    if (!res.ok) throw new Error('Failed to fetch orders')
-    return res.json()
+    const result = await res.json()
+    if (!res.ok) throw new Error(result.error || 'Failed to fetch orders')
+    return Array.isArray(result) ? result : (result as OrderListResponse).orders || []
   },
 
   async createOrder(data: {
@@ -224,7 +233,7 @@ export const api = {
   },
 
   async updateOrderStatus(id: string, status: string): Promise<Order> {
-    const res = await fetch(`${API_URL}/orders/${id}`, {
+    const res = await fetch(`${API_URL}/orders/${id}/status`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

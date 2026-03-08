@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js",
+    "dev": "set NODE_ENV=development && node server.js",
     "start:mongo": "set DB_TYPE=mongodb && node server.js"
   },
   "dependencies": {
