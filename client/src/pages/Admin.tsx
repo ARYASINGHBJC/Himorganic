@@ -194,8 +194,10 @@ export default function Admin() {
 
   if (loading) {
     return (
-      <div className="min-h-screen pt-32 bg-gradient-to-b from-primary-50 to-white">
-        <LoadingSpinner />
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-primary-50 to-white">
+        <div className="w-12 h-12 rounded-full border-4 border-primary-200 border-t-primary-600 animate-spin" />
+        <p className="text-gray-600 font-medium">Loading admin dashboard...</p>
+        <p className="text-sm text-gray-400">Server may be waking up, please wait a moment</p>
       </div>
     )
   }
