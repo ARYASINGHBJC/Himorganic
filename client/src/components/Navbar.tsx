@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ShoppingCart, Menu, X, Leaf, LayoutDashboard, User, LogOut, LogIn } from 'lucide-react'
 import { useCartStore } from '../store/cartStore'
@@ -41,7 +41,7 @@ export default function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
-            <NavLink to="/">Shop</NavLink>
+            <NavLink to="/#products">Shop</NavLink>
             <NavLink to="/#about">About</NavLink>
             <NavLink to="/#contact">Contact</NavLink>
             
@@ -149,7 +149,7 @@ export default function Navbar() {
             className="md:hidden bg-white border-t border-primary-100"
           >
             <div className="px-4 py-6 space-y-4">
-              <MobileNavLink to="/" onClick={() => setIsOpen(false)}>
+              <MobileNavLink to="/#products" onClick={() => setIsOpen(false)}>
                 Shop
               </MobileNavLink>
               <MobileNavLink to="/#about" onClick={() => setIsOpen(false)}>
@@ -200,18 +200,37 @@ export default function Navbar() {
 }
 
 function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
+  const navigate = useNavigate()
+  const location = useLocation()
   const isHashLink = to.includes('#')
   
   if (isHashLink) {
+    const [, hash = ''] = to.split('#')
+
     return (
-      <a href={to.replace('/', '')}>
+      <button
+        type="button"
+        onClick={() => {
+          const targetHash = `#${hash}`
+          if (location.pathname === '/') {
+            const element = document.getElementById(hash)
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }
+            window.history.replaceState(null, '', targetHash)
+            return
+          }
+
+          navigate({ pathname: '/', hash: targetHash })
+        }}
+      >
         <motion.span
           whileHover={{ scale: 1.05 }}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-primary-700 hover:text-primary-600 hover:bg-primary-50 transition-colors font-medium"
         >
           {children}
         </motion.span>
-      </a>
+      </button>
     )
   }
   
@@ -236,18 +255,39 @@ function MobileNavLink({
   children: React.ReactNode
   onClick: () => void
 }) {
+  const navigate = useNavigate()
+  const location = useLocation()
   const isHashLink = to.includes('#')
   
   if (isHashLink) {
+    const [, hash = ''] = to.split('#')
+
     return (
-      <a href={to.replace('/', '')} onClick={onClick}>
+      <button
+        type="button"
+        onClick={() => {
+          const targetHash = `#${hash}`
+          onClick()
+
+          if (location.pathname === '/') {
+            const element = document.getElementById(hash)
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }
+            window.history.replaceState(null, '', targetHash)
+            return
+          }
+
+          navigate({ pathname: '/', hash: targetHash })
+        }}
+      >
         <motion.div
           whileTap={{ scale: 0.95 }}
           className="px-4 py-3 rounded-xl bg-primary-50 text-primary-700 font-medium"
         >
           {children}
         </motion.div>
-      </a>
+      </button>
     )
   }
   

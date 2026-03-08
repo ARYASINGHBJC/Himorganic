@@ -1,4 +1,5 @@
 import { useState, useEffect, Suspense } from 'react'
+import { useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight, Package, Leaf, Heart, Shield, Truck } from 'lucide-react'
 import ProductCard from '../components/ProductCard'
@@ -9,12 +10,14 @@ import { Product } from '../types'
 import toast from 'react-hot-toast'
 
 export default function Home() {
+  const location = useLocation()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
 
   // Contact form state
   const [contactForm, setContactForm] = useState({ name: '', email: '', message: '' })
   const [contactSending, setContactSending] = useState(false)
+  const [contactResult, setContactResult] = useState('')
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,27 +25,32 @@ export default function Home() {
       toast.error('Please fill in all fields')
       return
     }
+
     setContactSending(true)
+    setContactResult('Sending...')
+
     try {
+      const formData = new FormData(e.currentTarget as HTMLFormElement)
+      formData.append('access_key', import.meta.env.VITE_WEB3FORMS_KEY)
+      formData.append('subject', `Himorganic Contact: Message from ${contactForm.name}`)
+
       const res = await fetch('https://api.web3forms.com/submit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          access_key: import.meta.env.VITE_WEB3FORMS_KEY,
-          name: contactForm.name,
-          email: contactForm.email,
-          message: contactForm.message,
-          subject: `Himorganic Contact: Message from ${contactForm.name}`,
-        }),
+        body: formData,
       })
+
       const data = await res.json()
+
       if (data.success) {
+        setContactResult('Form submitted successfully.')
         toast.success('Message sent! We\'ll get back to you soon.')
         setContactForm({ name: '', email: '', message: '' })
       } else {
+        setContactResult(data.message || 'Something went wrong.')
         throw new Error(data.message)
       }
     } catch {
+      setContactResult('Failed to send message. Please try again.')
       toast.error('Failed to send message. Please try again.')
     } finally {
       setContactSending(false)
@@ -52,6 +60,21 @@ export default function Home() {
   useEffect(() => {
     loadProducts()
   }, [])
+
+  useEffect(() => {
+    if (!location.hash) return
+
+    const elementId = location.hash.slice(1)
+    const scrollToSection = () => {
+      const element = document.getElementById(elementId)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }
+
+    const frameId = window.requestAnimationFrame(scrollToSection)
+    return () => window.cancelAnimationFrame(frameId)
+  }, [location.hash, loading])
 
   const loadProducts = async () => {
     try {
@@ -401,6 +424,7 @@ export default function Home() {
                     <label className="block text-sm font-medium text-primary-700 mb-2">Your Name</label>
                     <input
                       type="text"
+                      name="name"
                       value={contactForm.name}
                       onChange={e => setContactForm(f => ({ ...f, name: e.target.value }))}
                       className="w-full px-4 py-3 rounded-xl border border-primary-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all bg-white"
@@ -411,6 +435,7 @@ export default function Home() {
                     <label className="block text-sm font-medium text-primary-700 mb-2">Email Address</label>
                     <input
                       type="email"
+                      name="email"
                       value={contactForm.email}
                       onChange={e => setContactForm(f => ({ ...f, email: e.target.value }))}
                       className="w-full px-4 py-3 rounded-xl border border-primary-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all bg-white"
@@ -421,12 +446,14 @@ export default function Home() {
                     <label className="block text-sm font-medium text-primary-700 mb-2">Message</label>
                     <textarea
                       rows={4}
+                      name="message"
                       value={contactForm.message}
                       onChange={e => setContactForm(f => ({ ...f, message: e.target.value }))}
                       className="w-full px-4 py-3 rounded-xl border border-primary-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all bg-white resize-none"
                       placeholder="How can we help you?"
                     />
                   </div>
+                  <input type="checkbox" name="botcheck" className="hidden" tabIndex={-1} autoComplete="off" />
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -436,6 +463,11 @@ export default function Home() {
                   >
                     {contactSending ? 'Sending...' : 'Send Message'}
                   </motion.button>
+                  {contactResult && (
+                    <p className={`text-sm ${contactResult.includes('successfully') ? 'text-primary-700' : 'text-red-500'}`}>
+                      {contactResult}
+                    </p>
+                  )}
                 </div>
               </form>
             </motion.div>
