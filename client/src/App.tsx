@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import ProductDetail from './pages/ProductDetail'
@@ -15,17 +15,9 @@ import { useAuthStore } from './store/authStore'
 
 // Protected Route for Admin
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isAdmin } = useAuthStore()
-  const [hydrated, setHydrated] = useState(() => useAuthStore.persist.hasHydrated())
+  const { isAuthenticated, isAdmin, _hasHydrated } = useAuthStore()
 
-  useEffect(() => {
-    if (!hydrated) {
-      const unsub = useAuthStore.persist.onFinishHydration(() => setHydrated(true))
-      return unsub
-    }
-  }, [hydrated])
-
-  if (!hydrated) {
+  if (!_hasHydrated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-primary-50 to-white">
         <div className="w-10 h-10 rounded-full border-4 border-primary-200 border-t-primary-600 animate-spin" />

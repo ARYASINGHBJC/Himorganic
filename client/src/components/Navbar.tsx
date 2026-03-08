@@ -10,7 +10,7 @@ export default function Navbar() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const navigate = useNavigate()
   const itemCount = useCartStore((state) => state.getItemCount())
-  const { isAuthenticated, isAdmin, user, logout } = useAuthStore()
+  const { isAuthenticated, isAdmin, user, logout, _hasHydrated } = useAuthStore()
 
   const handleLogout = () => {
     logout()
@@ -45,7 +45,7 @@ export default function Navbar() {
             <NavLink to="/#about">About</NavLink>
             <NavLink to="/#contact">Contact</NavLink>
             
-            {isAdmin && (
+            {_hasHydrated && isAdmin && (
               <NavLink to="/admin">
                 <LayoutDashboard className="w-4 h-4" />
                 Admin
@@ -76,7 +76,7 @@ export default function Navbar() {
                       <div className="px-4 py-2 border-b border-primary-100">
                         <p className="font-medium text-gray-800">{user?.name}</p>
                         <p className="text-sm text-gray-500">{user?.email}</p>
-                        {isAdmin && (
+                        {_hasHydrated && isAdmin && (
                           <span className="inline-block mt-1 px-2 py-0.5 bg-primary-100 text-primary-700 text-xs rounded-full">
                             Admin
                           </span>
@@ -159,7 +159,7 @@ export default function Navbar() {
                 Contact
               </MobileNavLink>
               
-              {isAdmin && (
+              {_hasHydrated && isAdmin && (
                 <MobileNavLink to="/admin" onClick={() => setIsOpen(false)}>
                   Admin Dashboard
                 </MobileNavLink>
