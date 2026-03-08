@@ -2,29 +2,11 @@
 
 A modern, full-stack e-commerce platform for organic products built with React, TypeScript, and Node.js.
 
-![Himorganic](https://images.unsplash.com/photo-1542838132-92c53300491e?w=800)
-
 ## ✨ Features
 
-- **🛒 Consumer Features**
-  - Browse organic products with beautiful UI
-  - Add to cart & wishlist
-  - Secure checkout process
-  - Order tracking
-  - User authentication (register/login)
-
-- **👨‍💼 Admin Features**
-  - Product catalog management (CRUD)
-  - Order management
-  - Analytics dashboard
-  - Image upload support
-
-- **🎨 Modern UI/UX**
-  - Glassmorphism design
-  - Smooth animations (Framer Motion)
-  - 3D hero section (Three.js)
-  - Fully responsive
-  - Green/white organic theme
+- **🛒 Consumer Features:** Browse organic products with a polished storefront, choose product-specific quantity variants such as 500 gm, 1 Kg, 2 Kg, and 5 Kg, use the product detail experience, complete checkout, track orders, authenticate with email/password or phone OTP, and send messages through the Web3Forms contact form.
+- **👨‍💼 Admin Features:** Manage products with full CRUD support, upload product images, maintain product variants from the admin modal, manage orders, and review analytics.
+- **🎨 Modern UI/UX:** Glassmorphism styling, Framer Motion animations, a Three.js hero section, responsive layouts, and a green-and-white visual theme.
 
 ## 🛠️ Tech Stack
 
@@ -109,11 +91,6 @@ npm run dev
 ```
 Frontend runs on: `http://localhost:5173`
 
-### Option 2: Use Concurrently (if configured)
-```bash
-npm run dev:all
-```
-
 ### Development URLs
 
 | Service | URL |
@@ -122,14 +99,6 @@ npm run dev:all
 | Backend API | http://localhost:3000/api |
 | Admin Panel | http://localhost:5173/admin |
 
-### Default Credentials
-
-**Admin Login:**
-- Email: `admin@himorganic.com`
-- Password: `admin123`
-
-**Test User:**
-- Register a new account or use the app
 
 ### Hot Reload
 
@@ -165,19 +134,14 @@ npm run dev:all
 ### Option 2: Deploy Separately
 
 #### Frontend (Static Hosting)
-Deploy `client/dist/` to:
-- Vercel
-- Netlify
-- AWS S3 + CloudFront
-- GitHub Pages
+Deploy `client/dist/` to a static host such as Netlify.
 
 #### Backend (Node.js Hosting)
-Deploy to:
-- Railway
-- Render
-- Heroku
-- AWS EC2
-- DigitalOcean
+Deploy the Express API to a Node host such as Render.
+
+Current production architecture used by this repo:
+- Frontend: Netlify
+- Backend: Render
 
 ### Environment Variables for Production
 
@@ -196,11 +160,34 @@ MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/himorganic
 # DB_TYPE=json
 
 # JWT
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-JWT_EXPIRES_IN=7d
+JWT_ACCESS_SECRET=your-super-secret-access-key
+JWT_REFRESH_SECRET=your-separate-refresh-key
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=14d
 
-# Optional
-CORS_ORIGIN=https://yourdomain.com
+# Frontend origin allowed by CORS
+CLIENT_ORIGIN=https://your-netlify-site.netlify.app
+
+# OTP / SMS provider
+SMS_PROVIDER=fast2sms
+FAST2SMS_API_KEY=your-fast2sms-key
+
+# Optional alternatives
+# TWILIO_ACCOUNT_SID=...
+# TWILIO_AUTH_TOKEN=...
+# TWILIO_FROM_NUMBER=...
+# MSG91_API_KEY=...
+# MSG91_TEMPLATE_ID=...
+# MSG91_SENDER_ID=HIMORG
+```
+
+Frontend environment variables live in `client/.env`:
+
+```env
+VITE_API_URL=https://your-backend-host.com
+VITE_MERCHANT_UPI=your-upi-id@bank
+VITE_MERCHANT_NAME=Himorganic
+VITE_WEB3FORMS_KEY=your-web3forms-access-key
 ```
 
 ### Production Build Commands
@@ -268,7 +255,12 @@ Himorganic/
 | POST | `/api/auth/register` | Register new user |
 | POST | `/api/auth/login` | User login |
 | POST | `/api/auth/admin/login` | Admin login |
-| GET | `/api/auth/me` | Get current user |
+| POST | `/api/auth/send-otp` | Send phone OTP |
+| POST | `/api/auth/verify-otp` | Verify phone OTP |
+| POST | `/api/auth/refresh-token` | Refresh access token |
+| POST | `/api/auth/logout` | Logout |
+| GET | `/api/auth/profile` | Get current user profile |
+| PUT | `/api/auth/profile` | Update current user profile |
 
 ### Products
 | Method | Endpoint | Description |
@@ -282,28 +274,37 @@ Himorganic/
 ### Orders
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/orders` | Get user orders |
-| GET | `/api/orders/:id` | Get order details |
 | POST | `/api/orders` | Create new order |
-| PUT | `/api/orders/:id` | Update order (admin) |
+| GET | `/api/orders/my-orders` | Get current user's orders |
+| GET | `/api/orders/:id` | Get order details |
+| GET | `/api/orders` | Get all orders (admin) |
+| PATCH | `/api/orders/:id/status` | Update order status (admin) |
 
 ### Analytics (Admin)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/analytics/stats` | Get dashboard stats |
+| GET | `/api/analytics/dashboard` | Get dashboard stats |
+| GET | `/api/analytics/sales` | Get sales analytics |
+| GET | `/api/analytics/customers` | Get customer analytics |
+| GET | `/api/analytics/events` | Get event log |
+
+### Uploads (Admin)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/upload/product-image` | Upload a product image |
 
 ---
 
 ## 🧪 Testing
 
-```bash
-# Run frontend tests
-cd client
-npm run test
+There is currently no automated test suite configured in this repository.
 
-# Run backend tests
-npm run test
-```
+Recommended manual checks before deployment:
+- `cd client && npm run build`
+- Verify admin login and product CRUD
+- Verify homepage product loading and navbar section links
+- Verify contact form submission with the active Web3Forms key
+- Verify OTP delivery with valid production SMS credentials
 
 ---
 

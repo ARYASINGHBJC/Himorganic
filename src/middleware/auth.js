@@ -13,7 +13,10 @@ const verifyToken = (req, res, next) => {
   const token = authHeader.split(' ')[1]
   
   try {
-    const decoded = jwt.verify(token, config.jwtSecret)
+    const decoded = jwt.verify(token, config.jwtAccessSecret)
+    if (decoded.type !== 'access') {
+      return res.status(401).json({ error: 'Invalid token type.' })
+    }
     req.user = decoded
     next()
   } catch (error) {
@@ -50,8 +53,8 @@ const optionalAuth = (req, res, next) => {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1]
     try {
-      const decoded = jwt.verify(token, config.jwtSecret)
-      req.user = decoded
+      const decoded = jwt.verify(token, config.jwtAccessSecret)
+      req.user = decoded.type === 'access' ? decoded : null
     } catch (error) {
       // Token invalid, but that's okay for optional auth
       req.user = null

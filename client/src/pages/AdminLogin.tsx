@@ -86,15 +86,6 @@ export default function AdminLogin() {
               </div>
             </div>
 
-            {/* Default Credentials Hint */}
-            <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
-              <p className="text-sm text-amber-800 font-medium">Default Credentials:</p>
-              <p className="text-sm text-amber-700 mt-1">
-                Email: admin@himorganic.com<br />
-                Password: admin123
-              </p>
-            </div>
-
             {/* Submit */}
             <button
               type="submit"

@@ -17,9 +17,10 @@ const config = {
   },
   
   // JWT
-  jwtSecret: process.env.JWT_SECRET || 'himorganic-secret-key-change-in-production',
-  jwtExpiry: '7d',
-  refreshTokenExpiry: '30d',
+  jwtAccessSecret: process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'himorganic-secret-key-change-in-production',
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'himorganic-refresh-secret-change-in-production',
+  jwtExpiry: process.env.JWT_EXPIRES_IN || '15m',
+  refreshTokenExpiry: process.env.JWT_REFRESH_EXPIRES_IN || '14d',
   
   // Security
   bcryptRounds: 10,

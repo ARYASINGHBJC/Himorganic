@@ -1,6 +1,15 @@
 const mongoose = require('mongoose')
 
 const sessionSchema = new mongoose.Schema({
+  sessionId: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  familyId: {
+    type: String,
+    required: true,
+  },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
@@ -11,7 +20,7 @@ const sessionSchema = new mongoose.Schema({
     enum: ['User', 'Admin'],
     required: true
   },
-  refreshToken: {
+  refreshTokenHash: {
     type: String,
     required: true,
     unique: true
@@ -30,7 +39,7 @@ const sessionSchema = new mongoose.Schema({
   timestamps: true
 })
 
-// refreshToken unique index is implicit from field definition
+// refreshTokenHash unique index is implicit from field definition
 sessionSchema.index({ userId: 1 })
 sessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }) // TTL index
 

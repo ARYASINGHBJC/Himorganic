@@ -163,6 +163,21 @@ const createAdapter = (MongoModel, jsonCollection) => {
     },
 
     /**
+     * Delete many documents matching criteria
+     */
+    async deleteMany(query) {
+      if (isUsingMongoDB()) {
+        return await MongoModel.deleteMany(query)
+      }
+
+      const items = await this.findMany(query)
+      for (const item of items) {
+        jsonCollection.delete(item.id)
+      }
+      return { deletedCount: items.length }
+    },
+
+    /**
      * Count documents matching criteria
      */
     async count(query = {}) {

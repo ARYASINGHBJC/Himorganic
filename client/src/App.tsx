@@ -15,7 +15,7 @@ import { useAuthStore } from './store/authStore'
 
 // Protected Route for Admin
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isAdmin } = useAuthStore()
+  const { isAuthenticated, isAdmin, hasCheckedAuth } = useAuthStore()
   const [hydrated, setHydrated] = useState(() => useAuthStore.persist.hasHydrated())
 
   useEffect(() => {
@@ -25,7 +25,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
     }
   }, [hydrated])
 
-  if (!hydrated) {
+  if (!hydrated || !hasCheckedAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-primary-50 to-white">
         <div className="w-10 h-10 rounded-full border-4 border-primary-200 border-t-primary-600 animate-spin" />

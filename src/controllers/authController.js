@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs')
+const crypto = require('crypto')
 const jwt = require('jsonwebtoken')
 const https = require('https')
 const twilio = require('twilio')
@@ -136,41 +137,122 @@ const dispatchOTP = async (phone, otp) => {
   console.warn(`[OTP] SMS_PROVIDER not configured. OTP for ${phone}: ${otp}`)
 }
 
+const REFRESH_COOKIE_NAME = 'himorganic_refresh'
+
+const parseDurationToMs = (value, fallbackMs) => {
+  if (!value) return fallbackMs
+  if (typeof value === 'number') return value
+
+  const match = String(value).trim().match(/^(\d+)(ms|s|m|h|d)$/i)
+  if (!match) return fallbackMs
+
+  const amount = Number(match[1])
+  const unit = match[2].toLowerCase()
+  const multipliers = {
+    ms: 1,
+    s: 1000,
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000,
+  }
+
+  return amount * multipliers[unit]
+}
+
+const ACCESS_TOKEN_TTL_MS = parseDurationToMs(config.jwtExpiry, 15 * 60 * 1000)
+const REFRESH_TOKEN_TTL_MS = parseDurationToMs(config.refreshTokenExpiry, 14 * 24 * 60 * 60 * 1000)
+
+const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex')
+
+const parseCookies = (cookieHeader = '') => cookieHeader
+  .split(';')
+  .map((part) => part.trim())
+  .filter(Boolean)
+  .reduce((cookies, part) => {
+    const separator = part.indexOf('=')
+    if (separator === -1) return cookies
+
+    const key = part.slice(0, separator)
+    const value = part.slice(separator + 1)
+    cookies[key] = decodeURIComponent(value)
+    return cookies
+  }, {})
+
+const getRefreshTokenFromRequest = (req) => {
+  if (req.body?.refreshToken) return req.body.refreshToken
+  const cookies = parseCookies(req.headers.cookie || '')
+  return cookies[REFRESH_COOKIE_NAME] || null
+}
+
+const refreshCookieOptions = () => ({
+  httpOnly: true,
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  secure: process.env.NODE_ENV === 'production',
+  path: '/api/auth',
+  maxAge: REFRESH_TOKEN_TTL_MS,
+})
+
+const setRefreshTokenCookie = (res, refreshToken) => {
+  res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions())
+}
+
+const clearRefreshTokenCookie = (res) => {
+  res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions())
+}
+
+const revokeUserSessions = async (userId) => {
+  await db.sessions.deleteMany({ userId })
+}
+
 /**
  * Generate access + refresh tokens and persist the session.
- * FIX: Returns `token` (alias for accessToken) so the frontend AuthResponse type works.
  */
-const generateTokens = async (user, isAdmin = false) => {
+const generateTokens = async (user, isAdmin = false, sessionMeta = {}, existingFamilyId) => {
+  const sessionId = uuidv4()
+  const familyId = existingFamilyId || uuidv4()
+  const userId = user._id || user.id
   const payload = {
     id: user._id || user.id,
     email: user.email || null,
     phone: user.phone || null,
     name: user.name,
     isAdmin,
+    sid: sessionId,
+    type: 'access',
   }
 
-  const accessToken = jwt.sign(payload, config.jwtSecret, { expiresIn: config.jwtExpiry })
+  const accessToken = jwt.sign(payload, config.jwtAccessSecret, { expiresIn: config.jwtExpiry })
   const refreshToken = jwt.sign(
-    { id: user._id || user.id, isAdmin },
-    config.jwtSecret,
+    { id: userId, isAdmin, sid: sessionId, fid: familyId, type: 'refresh' },
+    config.jwtRefreshSecret,
     { expiresIn: config.refreshTokenExpiry }
   )
 
   // Persist session
   await db.sessions.create({
     id: uuidv4(),
-    userId: user._id || user.id,
+    sessionId,
+    familyId,
+    userId,
     userType: isAdmin ? 'Admin' : 'User',
-    refreshToken,
+    refreshTokenHash: hashToken(refreshToken),
     isAdmin,
+    ip: sessionMeta.ip,
+    userAgent: sessionMeta.userAgent,
     createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS).toISOString(),
   })
 
-  // `token` is the canonical field the frontend AuthResponse interface expects.
-  // `accessToken` is kept for any legacy consumers.
-  return { token: accessToken, accessToken, refreshToken }
+  return { token: accessToken, accessToken, refreshToken, sessionId, familyId }
 }
+
+const buildAuthResponse = (message, user, tokens, extra = {}) => ({
+  message,
+  user,
+  token: tokens.token,
+  accessToken: tokens.accessToken,
+  ...extra,
+})
 
 /** Strip sensitive fields from a user/admin object before sending to client */
 const sanitiseUser = (user) => {
@@ -224,12 +306,15 @@ const register = async (req, res) => {
       wishlist: [],
     })
 
-    const tokens = await generateTokens(newUser, false)
+    const tokens = await generateTokens(newUser, false, {
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    })
+
+    setRefreshTokenCookie(res, tokens.refreshToken)
 
     res.status(201).json({
-      message: 'Registration successful',
-      user: sanitiseUser(newUser),
-      ...tokens,
+      ...buildAuthResponse('Registration successful', sanitiseUser(newUser), tokens),
     })
   } catch (error) {
     console.error('Registration error:', error)
@@ -261,12 +346,15 @@ const login = async (req, res) => {
     // Update last login
     await db.users.updateById(user._id || user.id, { lastLogin: new Date() })
 
-    const tokens = await generateTokens(user, false)
+    const tokens = await generateTokens(user, false, {
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    })
+
+    setRefreshTokenCookie(res, tokens.refreshToken)
 
     res.json({
-      message: 'Login successful',
-      user: sanitiseUser(user),
-      ...tokens,
+      ...buildAuthResponse('Login successful', sanitiseUser(user), tokens),
     })
   } catch (error) {
     console.error('Login error:', error)
@@ -306,12 +394,15 @@ const adminLogin = async (req, res) => {
 
     await db.admins.updateById(admin._id || admin.id, { lastLogin: new Date() })
 
-    const tokens = await generateTokens(admin, true)
+    const tokens = await generateTokens(admin, true, {
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    })
+
+    setRefreshTokenCookie(res, tokens.refreshToken)
 
     res.json({
-      message: 'Admin login successful',
-      user: { ...sanitiseUser(admin), isAdmin: true },
-      ...tokens,
+      ...buildAuthResponse('Admin login successful', { ...sanitiseUser(admin), isAdmin: true }, tokens),
     })
   } catch (error) {
     console.error('Admin login error:', error)
@@ -431,13 +522,20 @@ const verifyOTP = async (req, res) => {
       })
     }
 
-    const tokens = await generateTokens(user, false)
+    const tokens = await generateTokens(user, false, {
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    })
+
+    setRefreshTokenCookie(res, tokens.refreshToken)
 
     res.status(isNewUser ? 201 : 200).json({
-      message: isNewUser ? 'Account created successfully' : 'Login successful',
-      isNewUser,
-      user: sanitiseUser(user),
-      ...tokens,
+      ...buildAuthResponse(
+        isNewUser ? 'Account created successfully' : 'Login successful',
+        sanitiseUser(user),
+        tokens,
+        { isNewUser }
+      ),
     })
   } catch (error) {
     console.error('Verify OTP error:', error)
@@ -448,19 +546,31 @@ const verifyOTP = async (req, res) => {
 // Refresh Token
 const refreshToken = async (req, res) => {
   try {
-    const { refreshToken: token } = req.body
+    const token = getRefreshTokenFromRequest(req)
     
     if (!token) {
       return res.status(400).json({ error: 'Refresh token required' })
     }
     
     // Verify refresh token
-    const decoded = jwt.verify(token, config.jwtSecret)
+    const decoded = jwt.verify(token, config.jwtRefreshSecret)
+    if (decoded.type !== 'refresh') {
+      clearRefreshTokenCookie(res)
+      return res.status(401).json({ error: 'Invalid refresh token' })
+    }
     
     // Check if session exists
-    const session = await db.sessions.findOne({ refreshToken: token, userId: decoded.id })
+    const session = await db.sessions.findOne({ sessionId: decoded.sid, userId: decoded.id })
     if (!session) {
+      await revokeUserSessions(decoded.id)
+      clearRefreshTokenCookie(res)
       return res.status(401).json({ error: 'Invalid refresh token' })
+    }
+
+    if (session.refreshTokenHash !== hashToken(token)) {
+      await db.sessions.deleteMany({ familyId: session.familyId, userId: decoded.id })
+      clearRefreshTokenCookie(res)
+      return res.status(401).json({ error: 'Refresh token reuse detected. Please login again.' })
     }
     
     // Get user
@@ -469,6 +579,7 @@ const refreshToken = async (req, res) => {
       : await db.users.findById(decoded.id)
       
     if (!user) {
+      clearRefreshTokenCookie(res)
       return res.status(401).json({ error: 'User not found' })
     }
     
@@ -476,11 +587,17 @@ const refreshToken = async (req, res) => {
     await db.sessions.deleteById(session._id || session.id)
     
     // Generate new tokens
-    const tokens = await generateTokens(user, decoded.isAdmin)
+    const tokens = await generateTokens(user, decoded.isAdmin, {
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    }, session.familyId)
+
+    setRefreshTokenCookie(res, tokens.refreshToken)
     
-    res.json(tokens)
+    res.json(buildAuthResponse('Token refreshed successfully', sanitiseUser(user), tokens))
   } catch (error) {
     console.error('Refresh token error:', error)
+    clearRefreshTokenCookie(res)
     res.status(401).json({ error: 'Invalid refresh token' })
   }
 }
@@ -488,10 +605,18 @@ const refreshToken = async (req, res) => {
 // Logout
 const logout = async (req, res) => {
   try {
-    const { refreshToken: token } = req.body
+    const token = getRefreshTokenFromRequest(req)
+    clearRefreshTokenCookie(res)
     
     if (token) {
-      await db.sessions.deleteOne({ refreshToken: token })
+      try {
+        const decoded = jwt.verify(token, config.jwtRefreshSecret)
+        if (decoded.type === 'refresh' && decoded.sid) {
+          await db.sessions.deleteOne({ sessionId: decoded.sid, userId: decoded.id })
+        }
+      } catch (_error) {
+        await db.sessions.deleteOne({ refreshTokenHash: hashToken(token) })
+      }
     }
     
     res.json({ message: 'Logged out successfully' })
@@ -567,6 +692,11 @@ const updateProfile = async (req, res) => {
 
     const dbCollection = req.user.isAdmin ? db.admins : db.users
     const updatedUser = await dbCollection.updateById(user._id || user.id, updates)
+
+    if (newPassword) {
+      await revokeUserSessions(user._id || user.id)
+      clearRefreshTokenCookie(res)
+    }
 
     res.json({ user: sanitiseUser(updatedUser) })
   } catch (error) {

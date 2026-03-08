@@ -12,8 +12,8 @@ export default function Navbar() {
   const itemCount = useCartStore((state) => state.getItemCount())
   const { isAuthenticated, isAdmin, user, logout } = useAuthStore()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     setShowUserMenu(false)
     navigate('/')
   }
@@ -83,7 +83,7 @@ export default function Navbar() {
                         )}
                       </div>
                       <button
-                        onClick={handleLogout}
+                        onClick={() => { void handleLogout() }}
                         className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-2"
                       >
                         <LogOut className="w-4 h-4" />
@@ -177,7 +177,7 @@ export default function Navbar() {
                   </div>
                   <button
                     onClick={() => {
-                      handleLogout()
+                      void handleLogout()
                       setIsOpen(false)
                     }}
                     className="w-full px-4 py-3 rounded-xl bg-red-50 text-red-600 font-medium flex items-center gap-2"

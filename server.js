@@ -26,11 +26,21 @@ const fs = require('fs')
 // Startup Env Guard – fail fast on missing critical config
 // ---------------------------------------------------------------------------
 if (process.env.NODE_ENV === 'production') {
-  const required = ['JWT_SECRET', 'MONGODB_URI']
-  const missing = required.filter((k) => !process.env[k])
+  const missing = []
+  if (!process.env.JWT_ACCESS_SECRET && !process.env.JWT_SECRET) {
+    missing.push('JWT_ACCESS_SECRET or JWT_SECRET')
+  }
+  if (!process.env.MONGODB_URI) {
+    missing.push('MONGODB_URI')
+  }
   if (missing.length) {
     console.error(`[FATAL] Missing required environment variables: ${missing.join(', ')}`)
     process.exit(1)
+  }
+
+  if (!process.env.JWT_REFRESH_SECRET) {
+    console.warn('[WARN] JWT_REFRESH_SECRET is not set. Refresh tokens are falling back to the access-token secret.')
+    console.warn('[WARN] Set a dedicated JWT_REFRESH_SECRET in production to isolate refresh-token signing.')
   }
 
   // Warn if SMS is not configured (OTP login will fall back to console-only logging)
@@ -311,9 +321,7 @@ const initializeDefaultAdmin = async () => {
       password: hashedPassword,
       role: 'super_admin',
       permissions: ['products', 'orders', 'users', 'analytics', 'settings']
-    })
-    
-    console.log('📋 Default admin created: admin@himorganic.com / admin123')
+    })    
   }
 }
 
