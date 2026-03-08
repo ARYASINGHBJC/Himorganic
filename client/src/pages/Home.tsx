@@ -284,9 +284,12 @@ export default function Home() {
             >
               <div className="relative rounded-3xl overflow-hidden shadow-2xl">
                 <img
-                  src="/uploads/ghee.png"
+                  src="https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1200&q=80"
                   alt="Organic Farm"
                   className="w-full h-96 object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&w=1200&q=80'
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-primary-900/50 to-transparent" />
                 <div className="absolute bottom-6 left-6 right-6">
