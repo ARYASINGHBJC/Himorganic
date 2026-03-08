@@ -13,6 +13,9 @@
  * - uploads/          - User uploaded images
  */
 
+// Load .env file before anything else
+require('dotenv').config()
+
 const express = require('express')
 const cors = require('cors')
 const helmet = require('helmet')

@@ -85,6 +85,53 @@ const dispatchOTP = async (phone, otp) => {
     return
   }
 
+  if (provider === 'fast2sms') {
+    const { apiKey } = config.sms.fast2sms
+    if (!apiKey) {
+      throw new Error('Fast2SMS API key not configured (FAST2SMS_API_KEY)')
+    }
+    // Extract 10-digit number (Fast2SMS expects digits only, no country code)
+    const digits = phone.replace(/\D/g, '').slice(-10)
+    const payload = JSON.stringify({
+      authorization: apiKey,
+      route: 'otp',
+      variables_values: otp,
+      numbers: digits,
+      flash: '0',
+    })
+    await new Promise((resolve, reject) => {
+      const req = https.request(
+        {
+          hostname: 'www.fast2sms.com',
+          path: '/dev/bulkV2',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(payload),
+            'cache-control': 'no-cache',
+          },
+        },
+        (res) => {
+          let body = ''
+          res.on('data', (chunk) => { body += chunk })
+          res.on('end', () => {
+            try {
+              const parsed = JSON.parse(body)
+              if (parsed.return === true) return resolve(parsed)
+              reject(new Error(`Fast2SMS error: ${parsed.message || body}`))
+            } catch {
+              reject(new Error(`Fast2SMS unexpected response: ${body}`))
+            }
+          })
+        }
+      )
+      req.on('error', reject)
+      req.write(payload)
+      req.end()
+    })
+    return
+  }
+
   // No provider configured – log a warning so it's easy to diagnose
   console.warn(`[OTP] SMS_PROVIDER not configured. OTP for ${phone}: ${otp}`)
 }

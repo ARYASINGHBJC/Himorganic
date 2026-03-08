@@ -1,6 +1,8 @@
 import { Product, Order, Customer } from '../types'
 
-const API_URL = '/api'
+// In production (Vercel), VITE_API_URL points to the Koyeb backend.
+// In development, the Vite proxy forwards /api to localhost:3000.
+const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api'
 
 // Get auth token from localStorage
 const getAuthHeader = (): Record<string, string> => {

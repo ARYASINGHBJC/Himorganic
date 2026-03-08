@@ -54,6 +54,11 @@ const config = {
       templateId: process.env.MSG91_TEMPLATE_ID || '',
       senderId: process.env.MSG91_SENDER_ID || 'HIMORG',
     },
+
+    // Fast2SMS (Indian provider, easiest for low volume)
+    fast2sms: {
+      apiKey: process.env.FAST2SMS_API_KEY || '',
+    },
   },
 }
 
