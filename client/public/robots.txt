@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://himorganic.netlify.app/sitemap.xml

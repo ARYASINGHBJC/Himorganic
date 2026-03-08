@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ShoppingCart, ArrowLeft, Minus, Plus, Package, Check, Leaf, Heart, Share2, Star, Truck, Shield } from 'lucide-react'
+import { ShoppingCart, ArrowLeft, Minus, Plus, Package, Check, Leaf, Heart, Share2, Star, Truck, Shield, Ban } from 'lucide-react'
 import { api } from '../lib/api'
 import { Product } from '../types'
 import { useCartStore } from '../store/cartStore'
@@ -327,6 +327,7 @@ export default function ProductDetail() {
                 { icon: Leaf, text: '100% Organic', color: 'text-green-600 bg-green-50' },
                 { icon: Truck, text: 'Free Shipping', color: 'text-blue-600 bg-blue-50' },
                 { icon: Shield, text: 'Secure Payment', color: 'text-purple-600 bg-purple-50' },
+                { icon: Ban, text: 'No Return', color: 'text-rose-600 bg-rose-50' },
               ].map((feature) => (
                 <motion.div
                   key={feature.text}

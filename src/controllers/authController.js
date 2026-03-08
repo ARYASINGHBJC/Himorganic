@@ -254,13 +254,15 @@ const generateTokens = async (user, isAdmin = false, sessionMeta = {}, existingF
   )
 
   // Persist session
+  const refreshTokenHash = hashToken(refreshToken)
   await db.sessions.create({
     id: uuidv4(),
     sessionId,
     familyId,
     userId,
     userType: isAdmin ? 'Admin' : 'User',
-    refreshTokenHash: hashToken(refreshToken),
+    refreshTokenHash,
+    refreshToken: refreshTokenHash,
     isAdmin,
     ip: sessionMeta.ip,
     userAgent: sessionMeta.userAgent,

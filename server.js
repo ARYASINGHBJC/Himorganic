@@ -19,6 +19,7 @@ require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
 const helmet = require('helmet')
+const compression = require('compression')
 const path = require('path')
 const fs = require('fs')
 
@@ -66,6 +67,9 @@ const { requestLogger, errorHandler, verifyToken, requireAdmin } = require('./sr
 
 // Initialize Express app
 const app = express()
+
+// Compress all text responses with gzip/brotli when supported
+app.use(compression())
 
 // ===========================================
 // MIDDLEWARE SETUP

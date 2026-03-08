@@ -25,6 +25,13 @@ const sessionSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  // Legacy compatibility: some deployed DBs still have a unique index on `refreshToken`.
+  // Store a deterministic hashed value here so writes remain compatible until index cleanup.
+  refreshToken: {
+    type: String,
+    required: true,
+    unique: true
+  },
   isAdmin: {
     type: Boolean,
     default: false
