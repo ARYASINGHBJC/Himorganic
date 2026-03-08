@@ -11,10 +11,18 @@ import PaymentSuccess from './pages/PaymentSuccess'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import AdminLogin from './pages/AdminLogin'
+import Wishlist from './pages/Wishlist'
 import { useAuthStore } from './store/authStore'
 
-// Protected Route for Admin
-function AdminRoute({ children }: { children: React.ReactNode }) {
+function RouteLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-primary-50 to-white">
+      <div className="w-10 h-10 rounded-full border-4 border-primary-200 border-t-primary-600 animate-spin" />
+    </div>
+  )
+}
+
+function ProtectedRoute({ children, requireAdmin = false }: { children: React.ReactNode; requireAdmin?: boolean }) {
   const { isAuthenticated, isAdmin, hasCheckedAuth } = useAuthStore()
   const [hydrated, setHydrated] = useState(() => useAuthStore.persist.hasHydrated())
 
@@ -25,17 +33,10 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
     }
   }, [hydrated])
 
-  if (!hydrated || !hasCheckedAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-primary-50 to-white">
-        <div className="w-10 h-10 rounded-full border-4 border-primary-200 border-t-primary-600 animate-spin" />
-      </div>
-    )
-  }
+  if (!hydrated || !hasCheckedAuth) return <RouteLoader />
 
-  if (!isAuthenticated || !isAdmin) {
-    return <Navigate to="/admin/login" replace />
-  }
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (requireAdmin && !isAdmin) return <Navigate to="/admin/login" replace />
 
   return <>{children}</>
 }
@@ -81,11 +82,16 @@ function App() {
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/wishlist" element={
+          <ProtectedRoute>
+            <Wishlist />
+          </ProtectedRoute>
+        } />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={
-          <AdminRoute>
+          <ProtectedRoute requireAdmin>
             <Admin />
-          </AdminRoute>
+          </ProtectedRoute>
         } />
         <Route path="/payment-success" element={<PaymentSuccess />} />
       </Routes>

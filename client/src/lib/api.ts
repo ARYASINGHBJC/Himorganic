@@ -114,6 +114,11 @@ interface OrderListResponse {
   offset: number
 }
 
+interface WishlistResponse {
+  ids: string[]
+  products: Product[]
+}
+
 const normalizeProduct = (product: Product & { _id?: string }): Product => ({
   ...product,
   id: product.id || product._id || '',
@@ -213,6 +218,39 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch profile')
     const data = await parseJson(res)
     return data.user ?? data
+  },
+
+  async getWishlist(): Promise<WishlistResponse> {
+    const res = await authFetch('/auth/wishlist')
+    const result = await parseJson(res)
+    if (!res.ok) throw new Error(result?.error || 'Failed to fetch wishlist')
+
+    return {
+      ids: Array.isArray(result?.ids) ? result.ids : [],
+      products: Array.isArray(result?.products) ? result.products.map(normalizeProduct) : [],
+    }
+  },
+
+  async addToWishlist(productId: string): Promise<WishlistResponse> {
+    const res = await authFetch(`/auth/wishlist/${productId}`, { method: 'POST' })
+    const result = await parseJson(res)
+    if (!res.ok) throw new Error(result?.error || 'Failed to update wishlist')
+
+    return {
+      ids: Array.isArray(result?.ids) ? result.ids : [],
+      products: Array.isArray(result?.products) ? result.products.map(normalizeProduct) : [],
+    }
+  },
+
+  async removeFromWishlist(productId: string): Promise<WishlistResponse> {
+    const res = await authFetch(`/auth/wishlist/${productId}`, { method: 'DELETE' })
+    const result = await parseJson(res)
+    if (!res.ok) throw new Error(result?.error || 'Failed to update wishlist')
+
+    return {
+      ids: Array.isArray(result?.ids) ? result.ids : [],
+      products: Array.isArray(result?.products) ? result.products.map(normalizeProduct) : [],
+    }
   },
 
   // ============== PRODUCTS ==============

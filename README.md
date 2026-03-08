@@ -4,7 +4,7 @@ A modern, full-stack e-commerce platform for organic products built with React, 
 
 ## ✨ Features
 
-- **🛒 Consumer Features:** Browse organic products with a polished storefront, choose product-specific quantity variants such as 500 gm, 1 Kg, 2 Kg, and 5 Kg, use the product detail experience, complete checkout, track orders, authenticate with email/password or phone OTP, and send messages through the Web3Forms contact form.
+- **🛒 Consumer Features:** Browse organic products with a polished storefront, choose product-specific quantity variants such as 500 gm, 1 Kg, 2 Kg, and 5 Kg, save/remove products in a persistent wishlist, use the product detail experience, complete checkout, track orders, authenticate with email/password or phone OTP, and send messages through the Web3Forms contact form.
 - **👨‍💼 Admin Features:** Manage products with full CRUD support, upload product images, maintain product variants from the admin modal, manage orders, and review analytics.
 - **🎨 Modern UI/UX:** Glassmorphism styling, Framer Motion animations, a Three.js hero section, responsive layouts, and a green-and-white visual theme.
 

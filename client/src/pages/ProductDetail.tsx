@@ -1,33 +1,55 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ShoppingCart, ArrowLeft, Minus, Plus, Package, Check, Leaf, Heart, Share2, Star, Truck, Shield } from 'lucide-react'
 import { api } from '../lib/api'
 import { Product } from '../types'
 import { useCartStore } from '../store/cartStore'
+import { useAuthStore } from '../store/authStore'
 import LoadingSpinner from '../components/LoadingSpinner'
 import toast from 'react-hot-toast'
 import { getProductVariants } from '../lib/productVariants'
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
   const [isWishlisted, setIsWishlisted] = useState(false)
+  const [wishlistBusy, setWishlistBusy] = useState(false)
   const addItem = useCartStore((state) => state.addItem)
   const variants = product ? getProductVariants(product) : []
   const [selectedWeight, setSelectedWeight] = useState('')
   const currentWeight = variants.find((variant) => variant.label === selectedWeight) || variants[0]
   const displayPrice = currentWeight?.price || 0
 
-  const handleWishlist = () => {
-    setIsWishlisted(!isWishlisted)
-    if (!isWishlisted) {
-      toast.success('Added to wishlist!')
-    } else {
-      toast('Removed from wishlist', { icon: '💔' })
+  const handleWishlist = async () => {
+    if (!product) return
+
+    if (!isAuthenticated) {
+      toast.error('Please login to save wishlist items')
+      navigate('/login', { state: { from: { pathname: `/product/${product.id}` } } })
+      return
+    }
+
+    setWishlistBusy(true)
+    try {
+      if (isWishlisted) {
+        await api.removeFromWishlist(product.id)
+        setIsWishlisted(false)
+        toast('Removed from wishlist', { icon: '💔' })
+      } else {
+        await api.addToWishlist(product.id)
+        setIsWishlisted(true)
+        toast.success('Added to wishlist!')
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update wishlist')
+    } finally {
+      setWishlistBusy(false)
     }
   }
 
@@ -58,7 +80,7 @@ export default function ProductDetail() {
 
   useEffect(() => {
     if (id) {
-      loadProduct(id)
+      void loadProduct(id)
     }
   }, [id])
 
@@ -68,6 +90,13 @@ export default function ProductDetail() {
       setProduct(data)
       const productVariants = getProductVariants(data)
       setSelectedWeight(productVariants[0]?.label || '')
+
+      if (isAuthenticated) {
+        const wishlist = await api.getWishlist()
+        setIsWishlisted(wishlist.ids.includes(data.id))
+      } else {
+        setIsWishlisted(false)
+      }
     } catch (error) {
       console.error('Failed to load product:', error)
     } finally {
@@ -170,8 +199,9 @@ export default function ProductDetail() {
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={handleWishlist}
-                  className={`w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center transition-colors shadow-lg ${isWishlisted ? 'text-red-500' : 'text-gray-600 hover:text-red-500'}`}
+                  onClick={() => { void handleWishlist() }}
+                  disabled={wishlistBusy}
+                  className={`w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center transition-colors shadow-lg ${isWishlisted ? 'text-red-500' : 'text-gray-600 hover:text-red-500'} ${wishlistBusy ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
                   <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-red-500' : ''}`} />
                 </motion.button>

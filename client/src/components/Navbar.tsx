@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ShoppingCart, Menu, X, Leaf, LayoutDashboard, User, LogOut, LogIn } from 'lucide-react'
+import { ShoppingCart, Menu, X, Leaf, LayoutDashboard, User, LogOut, LogIn, Heart } from 'lucide-react'
 import { useCartStore } from '../store/cartStore'
 import { useAuthStore } from '../store/authStore'
 
@@ -44,6 +44,13 @@ export default function Navbar() {
             <NavLink to="/#products">Shop</NavLink>
             <NavLink to="/#about">About</NavLink>
             <NavLink to="/#contact">Contact</NavLink>
+
+            {isAuthenticated && !isAdmin && (
+              <NavLink to="/wishlist">
+                <Heart className="w-4 h-4" />
+                Wishlist
+              </NavLink>
+            )}
             
             {isAdmin && (
               <NavLink to="/admin">
@@ -162,6 +169,12 @@ export default function Navbar() {
               {isAdmin && (
                 <MobileNavLink to="/admin" onClick={() => setIsOpen(false)}>
                   Admin Dashboard
+                </MobileNavLink>
+              )}
+
+              {isAuthenticated && !isAdmin && (
+                <MobileNavLink to="/wishlist" onClick={() => setIsOpen(false)}>
+                  Wishlist
                 </MobileNavLink>
               )}
               

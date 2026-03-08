@@ -9,6 +9,9 @@ const {
   refreshToken,
   logout,
   getProfile,
+  getWishlist,
+  addToWishlist,
+  removeFromWishlist,
   updateProfile,
 } = require('../controllers/authController')
 const { verifyToken, rateLimit } = require('../middleware/auth')
@@ -33,5 +36,8 @@ router.post('/verify-otp', authRateLimit, verifyOTP)
 // Protected routes
 router.get('/profile', verifyToken, getProfile)
 router.put('/profile', verifyToken, updateProfile)
+router.get('/wishlist', verifyToken, getWishlist)
+router.post('/wishlist/:productId', verifyToken, addToWishlist)
+router.delete('/wishlist/:productId', verifyToken, removeFromWishlist)
 
 module.exports = router

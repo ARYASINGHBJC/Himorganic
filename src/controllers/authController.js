@@ -204,6 +204,31 @@ const revokeUserSessions = async (userId) => {
   await db.sessions.deleteMany({ userId })
 }
 
+const normaliseId = (value) => {
+  if (!value) return ''
+  if (typeof value === 'string') return value
+  if (value._id) return String(value._id)
+  if (value.id) return String(value.id)
+  return String(value)
+}
+
+const getWishlistPayload = async (user) => {
+  const wishlistIds = Array.isArray(user?.wishlist)
+    ? [...new Set(user.wishlist.map((id) => normaliseId(id)).filter(Boolean))]
+    : []
+
+  const products = []
+  for (const productId of wishlistIds) {
+    const product = await db.products.findById(productId)
+    if (product) products.push(product)
+  }
+
+  return {
+    ids: products.map((product) => normaliseId(product._id || product.id)),
+    products,
+  }
+}
+
 /**
  * Generate access + refresh tokens and persist the session.
  */
@@ -644,6 +669,88 @@ const getProfile = async (req, res) => {
   }
 }
 
+// Get current user wishlist
+const getWishlist = async (req, res) => {
+  try {
+    if (req.user.isAdmin) {
+      return res.status(403).json({ error: 'Wishlist is only available for customer accounts' })
+    }
+
+    const user = await db.users.findById(req.user.id)
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    const wishlist = await getWishlistPayload(user)
+    res.json(wishlist)
+  } catch (error) {
+    console.error('Get wishlist error:', error)
+    res.status(500).json({ error: 'Failed to get wishlist' })
+  }
+}
+
+// Add product to wishlist
+const addToWishlist = async (req, res) => {
+  try {
+    if (req.user.isAdmin) {
+      return res.status(403).json({ error: 'Wishlist is only available for customer accounts' })
+    }
+
+    const { productId } = req.params
+    const product = await db.products.findById(productId)
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' })
+    }
+
+    const user = await db.users.findById(req.user.id)
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    const existingIds = Array.isArray(user.wishlist)
+      ? [...new Set(user.wishlist.map((id) => normaliseId(id)).filter(Boolean))]
+      : []
+    const nextIds = existingIds.includes(productId) ? existingIds : [...existingIds, productId]
+
+    const updatedUser = await db.users.updateById(user._id || user.id, { wishlist: nextIds })
+    const wishlist = await getWishlistPayload(updatedUser)
+    res.json({
+      message: existingIds.includes(productId) ? 'Product already in wishlist' : 'Added to wishlist',
+      ...wishlist,
+    })
+  } catch (error) {
+    console.error('Add to wishlist error:', error)
+    res.status(500).json({ error: 'Failed to update wishlist' })
+  }
+}
+
+// Remove product from wishlist
+const removeFromWishlist = async (req, res) => {
+  try {
+    if (req.user.isAdmin) {
+      return res.status(403).json({ error: 'Wishlist is only available for customer accounts' })
+    }
+
+    const { productId } = req.params
+    const user = await db.users.findById(req.user.id)
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    const existingIds = Array.isArray(user.wishlist)
+      ? [...new Set(user.wishlist.map((id) => normaliseId(id)).filter(Boolean))]
+      : []
+    const nextIds = existingIds.filter((id) => id !== productId)
+
+    const updatedUser = await db.users.updateById(user._id || user.id, { wishlist: nextIds })
+    const wishlist = await getWishlistPayload(updatedUser)
+    res.json({ message: 'Removed from wishlist', ...wishlist })
+  } catch (error) {
+    console.error('Remove from wishlist error:', error)
+    res.status(500).json({ error: 'Failed to update wishlist' })
+  }
+}
+
 // Update profile
 const updateProfile = async (req, res) => {
   try {
@@ -714,5 +821,8 @@ module.exports = {
   refreshToken,
   logout,
   getProfile,
+  getWishlist,
+  addToWishlist,
+  removeFromWishlist,
   updateProfile,
 }
