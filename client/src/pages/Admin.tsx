@@ -584,6 +584,12 @@ export default function Admin() {
                     </button>
                   </div>
 
+                  <div className="grid grid-cols-[1fr_140px_40px] gap-3 mb-2 px-1">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Label</span>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">Price</span>
+                    <span />
+                  </div>
+
                   <div className="space-y-3">
                     {formData.variants.map((variant, index) => (
                       <div key={`${index}-${variant.label}`} className="grid grid-cols-[1fr_140px_40px] gap-3 items-end">
@@ -593,7 +599,7 @@ export default function Admin() {
                             value={variant.label}
                             onChange={(e) => updateVariantRow(index, 'label', e.target.value)}
                             className="input-modern"
-                            placeholder="1 Kg"
+                            placeholder="1 Kg / 500 gm / 2 Kg"
                           />
                         </div>
                         <div>
@@ -604,7 +610,7 @@ export default function Admin() {
                             value={variant.price}
                             onChange={(e) => updateVariantRow(index, 'price', e.target.value)}
                             className="input-modern"
-                            placeholder="499"
+                            placeholder="Price"
                           />
                         </div>
                         <button
@@ -619,7 +625,7 @@ export default function Admin() {
                   </div>
 
                   <p className="text-xs text-gray-400 mt-2">
-                    Add real product sizes like 500 gm, 1 Kg, 2 Kg, 5 Kg with their own prices.
+                    Example: 500 gm = 299, 1 Kg = 499, 2 Kg = 899, 5 Kg = 1999.
                   </p>
                 </div>
 

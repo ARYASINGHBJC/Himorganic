@@ -53,6 +53,11 @@ interface OrderListResponse {
   offset: number
 }
 
+const normalizeProduct = (product: Product & { _id?: string }): Product => ({
+  ...product,
+  id: product.id || product._id || '',
+})
+
 export const api = {
   // ============== AUTH ==============
 
@@ -132,13 +137,15 @@ export const api = {
     const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : ''
     const res = await fetch(`${API_URL}/products${qs}`)
     if (!res.ok) throw new Error('Failed to fetch products')
-    return res.json()
+    const result = await res.json()
+    return Array.isArray(result) ? result.map(normalizeProduct) : []
   },
 
   async getProduct(id: string): Promise<Product> {
     const res = await fetch(`${API_URL}/products/${id}`)
     if (!res.ok) throw new Error('Product not found')
-    return res.json()
+    const result = await res.json()
+    return normalizeProduct(result)
   },
 
   async createProduct(product: Omit<Product, 'id' | 'createdAt'>): Promise<Product> {
@@ -152,7 +159,7 @@ export const api = {
     })
     const result = await res.json()
     if (!res.ok) throw new Error(result.error || 'Failed to create product')
-    return result
+    return normalizeProduct(result)
   },
 
   async updateProduct(id: string, product: Partial<Product>): Promise<Product> {
@@ -166,7 +173,7 @@ export const api = {
     })
     const result = await res.json()
     if (!res.ok) throw new Error(result.error || 'Failed to update product')
-    return result
+    return normalizeProduct(result)
   },
 
   async deleteProduct(id: string): Promise<void> {
