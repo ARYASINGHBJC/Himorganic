@@ -20,7 +20,6 @@ import {
 } from 'lucide-react'
 import { api } from '../lib/api'
 import { Product, Order } from '../types'
-import LoadingSpinner from '../components/LoadingSpinner'
 import toast from 'react-hot-toast'
 
 // Pre-defined organic product categories for the dropdown
