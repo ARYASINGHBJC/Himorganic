@@ -17,7 +17,6 @@ interface AuthState {
   isAuthenticated: boolean
   isAdmin: boolean
   isLoading: boolean
-  _hasHydrated: boolean
 
   // Actions
   login: (email: string, password: string) => Promise<void>
@@ -26,7 +25,6 @@ interface AuthState {
   loginWithOTP: (phone: string, otp: string, name?: string) => Promise<void>
   logout: () => void
   checkAuth: () => Promise<void>
-  setHasHydrated: (val: boolean) => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -37,8 +35,6 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isAdmin: false,
       isLoading: false,
-      _hasHydrated: false,
-      setHasHydrated: (val: boolean) => set({ _hasHydrated: val }),
 
       login: async (email: string, password: string) => {
         set({ isLoading: true })
@@ -154,9 +150,6 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true)
-      },
       partialize: (state) => ({
         user: state.user,
         token: state.token,
