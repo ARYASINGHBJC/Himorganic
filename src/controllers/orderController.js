@@ -1,6 +1,14 @@
 const { v4: uuidv4 } = require('uuid')
 const db = require('../utils/dbAdapter')
 
+const resolveOrderVariant = (product, item) => {
+  if (!item.variantLabel || !Array.isArray(product.variants) || product.variants.length === 0) {
+    return null
+  }
+
+  return product.variants.find((variant) => variant.label === item.variantLabel) || null
+}
+
 // Create order
 const createOrder = async (req, res) => {
   try {
@@ -27,15 +35,20 @@ const createOrder = async (req, res) => {
       if (product.stock < item.quantity) {
         return res.status(400).json({ error: `Insufficient stock for ${product.name}` })
       }
+
+      const selectedVariant = resolveOrderVariant(product, item)
+      const unitPrice = selectedVariant?.price ?? Number(item.variantPrice) ?? product.price
+      const variantLabel = selectedVariant?.label || item.variantLabel || null
       
-      const itemTotal = product.price * item.quantity
+      const itemTotal = unitPrice * item.quantity
       total += itemTotal
       
       orderItems.push({
         product: product._id || product.id,
         productId: product._id || product.id,
         name: product.name,
-        price: product.price,
+        price: unitPrice,
+        variantLabel,
         quantity: item.quantity,
         image: product.image,
         subtotal: itemTotal

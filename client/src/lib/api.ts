@@ -215,7 +215,7 @@ export const api = {
   },
 
   async createOrder(data: {
-    items: { productId: string; quantity: number }[]
+    items: { productId: string; quantity: number; variantLabel?: string; variantPrice?: number }[]
     customer: Customer
     paymentMethod: 'upi' | 'card'
   }): Promise<Order> {

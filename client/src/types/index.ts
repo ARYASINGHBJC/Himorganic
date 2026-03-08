@@ -1,3 +1,8 @@
+export interface ProductVariant {
+  label: string
+  price: number
+}
+
 export interface Product {
   id: string
   name: string
@@ -6,15 +11,20 @@ export interface Product {
   image: string
   category: string
   stock: number
+  unit?: string
+  weight?: string
+  variants?: ProductVariant[]
   createdAt: string
 }
 
 export interface CartItem {
+  cartItemId: string
   productId: string
   name: string
   price: number
   image: string
   quantity: number
+  variantLabel?: string
 }
 
 export interface Customer {
@@ -33,6 +43,7 @@ export interface Order {
     name: string
     price: number
     quantity: number
+    variantLabel?: string
   }[]
   customer: Customer
   total: number

@@ -19,6 +19,7 @@ const orderSchema = new mongoose.Schema({
     productId: String, // Backup in case product deleted
     name: String,
     price: Number,
+    variantLabel: String,
     quantity: Number,
     image: String,
     subtotal: Number

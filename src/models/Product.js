@@ -54,6 +54,16 @@ const productSchema = new mongoose.Schema({
     default: 'piece' // kg, g, piece, pack, etc.
   },
   weight: String,
+  variants: [{
+    label: {
+      type: String,
+      trim: true,
+    },
+    price: {
+      type: Number,
+      min: 0,
+    },
+  }],
   rating: {
     type: Number,
     default: 0,

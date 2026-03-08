@@ -5,12 +5,7 @@ import { ShoppingCart, Eye } from 'lucide-react'
 import { Product } from '../types'
 import { useCartStore } from '../store/cartStore'
 import toast from 'react-hot-toast'
-
-const WEIGHT_OPTIONS = [
-  { label: '500 gm', multiplier: 1 },
-  { label: '1 kg',   multiplier: 2 },
-  { label: '5 kg',   multiplier: 8 },
-]
+import { getProductVariants } from '../lib/productVariants'
 
 interface ProductCardProps {
   product: Product
@@ -19,14 +14,15 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, index }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem)
-  const [selectedWeight, setSelectedWeight] = useState(WEIGHT_OPTIONS[0])
-  const displayPrice = (product.price * selectedWeight.multiplier).toFixed(2)
+  const variants = getProductVariants(product)
+  const [selectedVariant, setSelectedVariant] = useState(variants[0])
+  const displayPrice = selectedVariant.price.toFixed(2)
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    addItem(product)
-    toast.success(`${product.name} (${selectedWeight.label}) added to cart!`)
+    addItem(product, 1, selectedVariant)
+    toast.success(`${product.name} (${selectedVariant.label}) added to cart!`)
   }
 
   return (
@@ -73,19 +69,19 @@ export default function ProductCard({ product, index }: ProductCardProps) {
             ₹{displayPrice}
           </div>
 
-          {/* Weight selector */}
-          <div className="flex gap-2 mb-4">
-            {WEIGHT_OPTIONS.map((w) => (
+          {/* Variant selector */}
+          <div className="flex gap-2 mb-4 flex-wrap">
+            {variants.map((variant) => (
               <button
-                key={w.label}
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedWeight(w) }}
+                key={variant.label}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedVariant(variant) }}
                 className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
-                  selectedWeight.label === w.label
+                  selectedVariant.label === variant.label
                     ? 'bg-primary-500 text-white border-primary-500'
                     : 'bg-white text-primary-700 border-primary-200 hover:border-primary-400'
                 }`}
               >
-                {w.label}
+                {variant.label}
               </button>
             ))}
           </div>

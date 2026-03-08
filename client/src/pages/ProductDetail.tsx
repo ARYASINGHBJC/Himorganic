@@ -7,24 +7,20 @@ import { Product } from '../types'
 import { useCartStore } from '../store/cartStore'
 import LoadingSpinner from '../components/LoadingSpinner'
 import toast from 'react-hot-toast'
+import { getProductVariants } from '../lib/productVariants'
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>()
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
-  const [selectedWeight, setSelectedWeight] = useState('500 gm')
-
-  const WEIGHT_OPTIONS = [
-    { label: '500 gm', multiplier: 1 },
-    { label: '1 kg',   multiplier: 2 },
-    { label: '5 kg',   multiplier: 8 },
-  ]
-  const currentWeight = WEIGHT_OPTIONS.find(w => w.label === selectedWeight) || WEIGHT_OPTIONS[0]
-  const displayPrice = product ? (product.price * currentWeight.multiplier) : 0
   const [added, setAdded] = useState(false)
   const [isWishlisted, setIsWishlisted] = useState(false)
   const addItem = useCartStore((state) => state.addItem)
+  const variants = product ? getProductVariants(product) : []
+  const [selectedWeight, setSelectedWeight] = useState('')
+  const currentWeight = variants.find((variant) => variant.label === selectedWeight) || variants[0]
+  const displayPrice = currentWeight?.price || 0
 
   const handleWishlist = () => {
     setIsWishlisted(!isWishlisted)
@@ -70,6 +66,8 @@ export default function ProductDetail() {
     try {
       const data = await api.getProduct(productId)
       setProduct(data)
+      const productVariants = getProductVariants(data)
+      setSelectedWeight(productVariants[0]?.label || '')
     } catch (error) {
       console.error('Failed to load product:', error)
     } finally {
@@ -78,10 +76,10 @@ export default function ProductDetail() {
   }
 
   const handleAddToCart = () => {
-    if (product) {
-      addItem(product, quantity)
+    if (product && currentWeight) {
+      addItem(product, quantity, currentWeight)
       setAdded(true)
-      toast.success(`${product.name} · ${selectedWeight} (x${quantity}) added to cart!`)
+      toast.success(`${product.name} · ${currentWeight.label} (x${quantity}) added to cart!`)
       setTimeout(() => setAdded(false), 2000)
     }
   }
@@ -226,21 +224,21 @@ export default function ProductDetail() {
               </span>
             </div>
 
-            {/* Weight selector */}
+            {/* Variant selector */}
             <div className="mb-6">
               <span className="text-gray-700 font-medium block mb-3">Size:</span>
-              <div className="flex gap-3">
-                {WEIGHT_OPTIONS.map((w) => (
+              <div className="flex gap-3 flex-wrap">
+                {variants.map((variant) => (
                   <button
-                    key={w.label}
-                    onClick={() => setSelectedWeight(w.label)}
+                    key={variant.label}
+                    onClick={() => setSelectedWeight(variant.label)}
                     className={`px-5 py-2.5 rounded-xl border-2 font-semibold text-sm transition-all ${
-                      selectedWeight === w.label
+                      selectedWeight === variant.label
                         ? 'border-primary-500 bg-primary-50 text-primary-700'
                         : 'border-gray-200 text-gray-600 hover:border-primary-300'
                     }`}
                   >
-                    {w.label}
+                    {variant.label}
                   </button>
                 ))}
               </div>

@@ -1,6 +1,17 @@
 const { v4: uuidv4 } = require('uuid')
 const db = require('../utils/dbAdapter')
 
+const normaliseVariants = (variants) => {
+  if (!Array.isArray(variants)) return []
+
+  return variants
+    .map((variant) => ({
+      label: String(variant.label || '').trim(),
+      price: Number.parseFloat(variant.price),
+    }))
+    .filter((variant) => variant.label && Number.isFinite(variant.price) && variant.price >= 0)
+}
+
 // Get all products (with optional filters)
 const getProducts = async (req, res) => {
   try {
@@ -103,7 +114,7 @@ const getProduct = async (req, res) => {
 // Create product (Admin only)
 const createProduct = async (req, res) => {
   try {
-    const { name, description, price, image, category, stock } = req.body
+    const { name, description, price, image, category, stock, variants } = req.body
     
     if (!name || !price) {
       return res.status(400).json({ error: 'Name and price are required' })
@@ -117,6 +128,7 @@ const createProduct = async (req, res) => {
       image: image || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400',
       category: category || 'General',
       stock: parseInt(stock) || 100,
+      variants: normaliseVariants(variants),
       rating: 0,
       reviewCount: 0,
       createdBy: req.user.id
@@ -136,7 +148,7 @@ const createProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
   try {
     const { id } = req.params
-    const { name, description, price, image, category, stock } = req.body
+    const { name, description, price, image, category, stock, variants } = req.body
     
     const product = await db.products.findById(id)
     if (!product) {
@@ -150,6 +162,7 @@ const updateProduct = async (req, res) => {
     if (image !== undefined) updates.image = image
     if (category !== undefined) updates.category = category
     if (stock !== undefined) updates.stock = parseInt(stock)
+    if (variants !== undefined) updates.variants = normaliseVariants(variants)
     
     const updatedProduct = await db.products.updateById(id, updates)
     

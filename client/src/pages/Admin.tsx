@@ -22,6 +22,11 @@ import { api } from '../lib/api'
 import { Product, Order } from '../types'
 import toast from 'react-hot-toast'
 
+type VariantFormRow = {
+  label: string
+  price: string
+}
+
 // Pre-defined organic product categories for the dropdown
 const PRODUCT_CATEGORIES = [
   'All Natural',
@@ -64,6 +69,7 @@ export default function Admin() {
     category: '',
     stock: '',
     image: '',
+    variants: [{ label: '', price: '' }] as VariantFormRow[],
   })
 
   useEffect(() => {
@@ -95,6 +101,9 @@ export default function Admin() {
         category: product.category,
         stock: product.stock.toString(),
         image: product.image,
+        variants: product.variants?.length
+          ? product.variants.map((variant) => ({ label: variant.label, price: variant.price.toString() }))
+          : [{ label: '', price: '' }],
       })
       setImagePreview(product.image)
     } else {
@@ -106,6 +115,7 @@ export default function Admin() {
         category: '',
         stock: '100',
         image: '',
+        variants: [{ label: '', price: '' }],
       })
       setImagePreview('')
     }
@@ -141,6 +151,13 @@ export default function Admin() {
     setSaving(true)
 
     try {
+      const variants = formData.variants
+        .map((variant) => ({
+          label: variant.label.trim(),
+          price: Number.parseFloat(variant.price),
+        }))
+        .filter((variant) => variant.label && Number.isFinite(variant.price) && variant.price >= 0)
+
       const productData = {
         name: formData.name,
         description: formData.description,
@@ -148,6 +165,7 @@ export default function Admin() {
         category: formData.category || 'General',
         stock: parseInt(formData.stock) || 100,
         image: formData.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400',
+        variants,
       }
 
       if (editingProduct) {
@@ -190,6 +208,31 @@ export default function Admin() {
   }
 
   const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0)
+
+  const updateVariantRow = (index: number, field: keyof VariantFormRow, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      variants: prev.variants.map((variant, variantIndex) => (
+        variantIndex === index ? { ...variant, [field]: value } : variant
+      )),
+    }))
+  }
+
+  const addVariantRow = () => {
+    setFormData((prev) => ({
+      ...prev,
+      variants: [...prev.variants, { label: '', price: '' }],
+    }))
+  }
+
+  const removeVariantRow = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      variants: prev.variants.length === 1
+        ? [{ label: '', price: '' }]
+        : prev.variants.filter((_, variantIndex) => variantIndex !== index),
+    }))
+  }
 
   if (loading) {
     return (
@@ -323,7 +366,14 @@ export default function Admin() {
                                 }}
                               />
                             </td>
-                            <td className="p-4 font-semibold text-gray-800">{product.name}</td>
+                            <td className="p-4 font-semibold text-gray-800">
+                              <div>{product.name}</div>
+                              {product.variants?.length ? (
+                                <div className="text-xs text-gray-400 mt-1">
+                                  {product.variants.map((variant) => variant.label).join(', ')}
+                                </div>
+                              ) : null}
+                            </td>
                             <td className="p-4">
                               <span className="px-3 py-1 rounded-full text-xs bg-primary-100 text-primary-700 font-medium">
                                 {product.category}
@@ -518,6 +568,59 @@ export default function Admin() {
                       placeholder="100"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="block text-sm font-medium text-gray-600">
+                      Quantity Options
+                    </label>
+                    <button
+                      type="button"
+                      onClick={addVariantRow}
+                      className="text-sm text-primary-600 font-medium hover:text-primary-700"
+                    >
+                      + Add option
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {formData.variants.map((variant, index) => (
+                      <div key={`${index}-${variant.label}`} className="grid grid-cols-[1fr_140px_40px] gap-3 items-end">
+                        <div>
+                          <input
+                            type="text"
+                            value={variant.label}
+                            onChange={(e) => updateVariantRow(index, 'label', e.target.value)}
+                            className="input-modern"
+                            placeholder="1 Kg"
+                          />
+                        </div>
+                        <div>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={variant.price}
+                            onChange={(e) => updateVariantRow(index, 'price', e.target.value)}
+                            className="input-modern"
+                            placeholder="499"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeVariantRow(index)}
+                          className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center text-red-500 border border-red-200 hover:bg-red-100"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-xs text-gray-400 mt-2">
+                    Add real product sizes like 500 gm, 1 Kg, 2 Kg, 5 Kg with their own prices.
+                  </p>
                 </div>
 
                 {/* Category Dropdown */}

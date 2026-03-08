@@ -210,7 +210,12 @@ export default function Checkout() {
       try {
         setProcessing(true)
         const order = await api.createOrder({
-          items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+          items: items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            variantLabel: item.variantLabel,
+            variantPrice: item.price,
+          })),
           customer,
           paymentMethod: 'upi',
         })
@@ -240,7 +245,12 @@ export default function Checkout() {
     setProcessing(true)
     try {
       const order = await api.createOrder({
-        items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+        items: items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          variantLabel: item.variantLabel,
+          variantPrice: item.price,
+        })),
         customer,
         paymentMethod,
       })
@@ -790,7 +800,7 @@ export default function Checkout() {
               <div className="space-y-4 mb-6 max-h-64 overflow-y-auto">
                 {items.map((item) => (
                   <motion.div 
-                    key={item.productId} 
+                    key={item.cartItemId} 
                     className="flex gap-4 bg-gray-50 p-3 rounded-xl"
                     whileHover={{ scale: 1.02 }}
                   >
@@ -809,6 +819,7 @@ export default function Checkout() {
                     </div>
                     <div className="flex-1">
                       <h4 className="font-medium text-sm text-gray-800">{item.name}</h4>
+                      {item.variantLabel && <p className="text-gray-400 text-xs">Size: {item.variantLabel}</p>}
                       <p className="text-gray-400 text-xs">Qty: {item.quantity}</p>
                     </div>
                     <span className="font-semibold text-primary-600">

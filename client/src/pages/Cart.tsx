@@ -81,7 +81,7 @@ export default function Cart() {
           <div className="lg:col-span-2 space-y-4">
             {items.map((item, index) => (
               <motion.div
-                key={item.productId}
+                key={item.cartItemId}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.1 }}
@@ -104,13 +104,16 @@ export default function Cart() {
                 
                 <div className="flex-1">
                   <h3 className="text-xl font-bold mb-1 text-gray-800">{item.name}</h3>
+                  {item.variantLabel && (
+                    <p className="text-sm text-gray-500 mb-1">Size: {item.variantLabel}</p>
+                  )}
                   <p className="text-primary-600 font-semibold mb-4">₹{item.price.toFixed(2)} each</p>
                   
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 bg-gradient-to-r from-primary-50 to-primary-100 rounded-xl p-1.5 border border-primary-200">
                       <motion.button
                         whileTap={{ scale: 0.9 }}
-                        onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                        onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
                         className="w-9 h-9 rounded-lg bg-white flex items-center justify-center hover:bg-primary-50 transition-colors text-primary-600 shadow-sm"
                       >
                         <Minus className="w-4 h-4" />
@@ -118,7 +121,7 @@ export default function Cart() {
                       <span className="w-10 text-center font-bold text-gray-800">{item.quantity}</span>
                       <motion.button
                         whileTap={{ scale: 0.9 }}
-                        onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                        onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
                         className="w-9 h-9 rounded-lg bg-white flex items-center justify-center hover:bg-primary-50 transition-colors text-primary-600 shadow-sm"
                       >
                         <Plus className="w-4 h-4" />
@@ -132,7 +135,7 @@ export default function Cart() {
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
-                        onClick={() => removeItem(item.productId)}
+                        onClick={() => removeItem(item.cartItemId)}
                         className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500 hover:bg-red-100 transition-colors border border-red-200 shadow-sm"
                       >
                         <Trash2 className="w-4 h-4" />

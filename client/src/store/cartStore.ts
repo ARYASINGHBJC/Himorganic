@@ -1,12 +1,12 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { CartItem, Product } from '../types'
+import { CartItem, Product, ProductVariant } from '../types'
 
 interface CartStore {
   items: CartItem[]
-  addItem: (product: Product, quantity?: number) => void
-  removeItem: (productId: string) => void
-  updateQuantity: (productId: string, quantity: number) => void
+  addItem: (product: Product, quantity?: number, variant?: ProductVariant) => void
+  removeItem: (cartItemId: string) => void
+  updateQuantity: (cartItemId: string, quantity: number) => void
   clearCart: () => void
   getTotal: () => number
   getItemCount: () => number
@@ -17,10 +17,11 @@ export const useCartStore = create<CartStore>()(
     (set, get) => ({
       items: [],
 
-      addItem: (product: Product, quantity = 1) => {
+      addItem: (product: Product, quantity = 1, variant?: ProductVariant) => {
         set((state) => {
+          const cartItemId = `${product.id}::${variant?.label || 'default'}`
           const existingIndex = state.items.findIndex(
-            (item) => item.productId === product.id
+            (item) => item.cartItemId === cartItemId
           )
 
           if (existingIndex > -1) {
@@ -33,27 +34,29 @@ export const useCartStore = create<CartStore>()(
             items: [
               ...state.items,
               {
+                cartItemId,
                 productId: product.id,
                 name: product.name,
-                price: product.price,
+                price: variant?.price ?? product.price,
                 image: product.image,
                 quantity,
+                variantLabel: variant?.label,
               },
             ],
           }
         })
       },
 
-      removeItem: (productId: string) => {
+      removeItem: (cartItemId: string) => {
         set((state) => ({
-          items: state.items.filter((item) => item.productId !== productId),
+          items: state.items.filter((item) => item.cartItemId !== cartItemId),
         }))
       },
 
-      updateQuantity: (productId: string, quantity: number) => {
+      updateQuantity: (cartItemId: string, quantity: number) => {
         set((state) => ({
           items: state.items.map((item) =>
-            item.productId === productId
+            item.cartItemId === cartItemId
               ? { ...item, quantity: Math.max(1, quantity) }
               : item
           ),
