@@ -114,6 +114,8 @@ interface OrderListResponse {
   offset: number
 }
 
+type OrderWithMongoId = Order & { _id?: string }
+
 interface WishlistResponse {
   ids: string[]
   products: Product[]
@@ -122,6 +124,22 @@ interface WishlistResponse {
 const normalizeProduct = (product: Product & { _id?: string }): Product => ({
   ...product,
   id: product.id || product._id || '',
+})
+
+const normalizeOrder = (order: OrderWithMongoId): Order => ({
+  ...order,
+  id: order.id || order._id || '',
+  items: Array.isArray(order.items) ? order.items : [],
+  customer: order.customer || {
+    name: 'Guest Customer',
+    email: 'N/A',
+    phone: '',
+    address: '',
+    city: '',
+    pincode: '',
+  },
+  total: Number.isFinite(order.total as number) ? Number(order.total) : 0,
+  createdAt: order.createdAt || new Date().toISOString(),
 })
 
 export const api = {
@@ -325,14 +343,16 @@ export const api = {
     const res = await authFetch('/orders')
     const result = await parseJson(res)
     if (!res.ok) throw new Error(result.error || 'Failed to fetch orders')
-    return Array.isArray(result) ? result : (result as OrderListResponse).orders || []
+    const list = Array.isArray(result) ? result : (result as OrderListResponse).orders || []
+    return Array.isArray(list) ? list.map((order) => normalizeOrder(order as OrderWithMongoId)) : []
   },
 
   async getMyOrders(): Promise<Order[]> {
     const res = await authFetch('/orders/my-orders')
     const result = await parseJson(res)
     if (!res.ok) throw new Error(result.error || 'Failed to fetch orders')
-    return Array.isArray(result) ? result : (result as OrderListResponse).orders || []
+    const list = Array.isArray(result) ? result : (result as OrderListResponse).orders || []
+    return Array.isArray(list) ? list.map((order) => normalizeOrder(order as OrderWithMongoId)) : []
   },
 
   async createOrder(data: {
@@ -349,7 +369,7 @@ export const api = {
     })
     const result = await parseJson(res)
     if (!res.ok) throw new Error(result.error || 'Failed to create order')
-    return result
+    return normalizeOrder(result as OrderWithMongoId)
   },
 
   async updateOrderStatus(id: string, status: string): Promise<Order> {
@@ -362,7 +382,7 @@ export const api = {
     })
     const result = await parseJson(res)
     if (!res.ok) throw new Error(result.error || 'Failed to update order')
-    return result
+    return normalizeOrder(result as OrderWithMongoId)
   },
 
   // ============== ADMIN STATS ==============

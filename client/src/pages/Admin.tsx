@@ -442,25 +442,35 @@ export default function Admin() {
                       </thead>
                       <tbody>
                         {orders.map((order) => (
+                          (() => {
+                            const orderId = order.id || 'unknown'
+                            const customerName = order.customer?.name || 'Guest Customer'
+                            const customerEmail = order.customer?.email || 'N/A'
+                            const itemCount = Array.isArray(order.items) ? order.items.length : 0
+                            const total = Number.isFinite(order.total) ? order.total : 0
+                            const createdAt = order.createdAt ? new Date(order.createdAt) : new Date()
+                            const status = order.status || 'pending'
+
+                            return (
                           <tr
-                            key={order.id}
+                            key={orderId}
                             className="border-t border-primary-100 hover:bg-primary-50/50 transition-colors"
                           >
                             <td className="p-4 font-mono text-sm text-gray-700">
-                              {order.id.substring(0, 8)}...
+                              {orderId.substring(0, 8)}...
                             </td>
                             <td className="p-4">
-                              <div className="font-semibold text-gray-800">{order.customer.name}</div>
-                              <div className="text-sm text-gray-400">{order.customer.email}</div>
+                              <div className="font-semibold text-gray-800">{customerName}</div>
+                              <div className="text-sm text-gray-400">{customerEmail}</div>
                             </td>
-                            <td className="p-4 text-gray-700">{order.items.length} item(s)</td>
+                            <td className="p-4 text-gray-700">{itemCount} item(s)</td>
                             <td className="p-4 font-semibold text-primary-600">
-                              ₹{order.total.toFixed(2)}
+                              ₹{total.toFixed(2)}
                             </td>
                             <td className="p-4">
                               <select
-                                value={order.status}
-                                onChange={(e) => handleOrderStatus(order.id, e.target.value)}
+                                value={status}
+                                onChange={(e) => handleOrderStatus(orderId, e.target.value)}
                                 className="bg-white border border-primary-200 rounded-lg px-3 py-1 text-sm text-gray-700 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
                               >
                                 <option value="pending">Pending</option>
@@ -469,9 +479,11 @@ export default function Admin() {
                               </select>
                             </td>
                             <td className="p-4 text-gray-500">
-                              {new Date(order.createdAt).toLocaleDateString()}
+                              {createdAt.toLocaleDateString()}
                             </td>
                           </tr>
+                            )
+                          })()
                         ))}
                       </tbody>
                     </table>
